@@ -57,6 +57,7 @@ class HTTPProfile(LFCliBase):
     def start_cx(self):
         logger.info("Starting CXs...")
         for cx_name in self.created_cx.keys():
+            time.sleep(6)
             self.json_post("/cli-json/set_cx_state", {
                 "test_mgr": "default_tm",
                 "cx_name": self.created_cx[cx_name],
@@ -279,7 +280,7 @@ class HTTPProfile(LFCliBase):
                         "ssl_cert_fname": "ca-bundle.crt",
                         "proxy_port": 0,
                         "max_speed": self.max_speed,
-                        "proxy_auth_type": proxy_auth_type,
+                    "proxy_auth_type": proxy_auth_type,
                         "quiesce_after": self.quiesce_after
                     }
                 set_endp_data={

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#! usr/bin/env python3
 """
 NAME: lf_mixed_traffic.py
 
@@ -6,7 +6,7 @@ PURPOSE:
         Mixed traffic test is designed to measure the access point performance and stability by running multiple traffic
         on both virtual & real clients like Android, Linux, Windows, and IOS connected to the access point.
         This test allows the user to choose multiple types of traffic like client ping test, qos test, ftp test, http test,
-        multicast test multicast test and run tests both serially and simultaneously.
+        multicast test and run tests both serially and simultaneously.
 
 EXAMPLE:
 
@@ -105,6 +105,9 @@ import time
 import datetime
 import pandas as pd
 from multiprocessing import Process, Pipe
+
+import requests
+
 # import traceback
 
 if sys.version_info[0] != 3:
@@ -121,6 +124,7 @@ lf_cleanup = importlib.import_module("py-scripts.lf_cleanup")
 LFUtils = importlib.import_module("py-json.LANforge.LFUtils")
 lf_logger_config = importlib.import_module("py-scripts.lf_logger_config")
 lf_base_interop_profile = importlib.import_module("py-scripts.lf_base_interop_profile")
+cv_test_manager = importlib.import_module("py-json.cv_test_manager")
 
 # importing scripts
 ping_test = importlib.import_module("py-scripts.lf_interop_ping")
@@ -198,13 +202,13 @@ class Mixed_Traffic(Realm):
                  target='192.168.1.3',
                  multicast_endp_types=None,
                  multicast_tos=None,
-                 
-                 
-                #  for webui
-                 dowebgui = False,
-                 result_dir = None,
-                 test_name = None,
-                 device_list = None,
+                 cv_scenario=None,
+
+                 #  for webui
+                 dowebgui=False,
+                 result_dir=None,
+                 test_name=None,
+                 device_list=None,
                  debug=False):
         super().__init__(lfclient_host=host,
                          lfclient_port=port)
@@ -255,7 +259,7 @@ class Mixed_Traffic(Realm):
         self.ssid = ssid
         self.passwd = passwd
         self.security = security
-
+        self.cv_scenario = cv_scenario
         self.configure = configure
 
         self.server_ip = server_ip
@@ -294,7 +298,7 @@ class Mixed_Traffic(Realm):
         # self.radio = radio
         self.number_template = number_template
         self.station_list = []
-        self.num_staions = num_stations
+        self.num_stations = num_stations
         self.upstream_port = upstream_port
         self.dut_model = dut_model
         self.dut_firmware = dut_firmware
@@ -325,7 +329,7 @@ class Mixed_Traffic(Realm):
         self.qos_serial_run = qos_serial
 
         self.parallel = parallel
-        
+
         self.target = target
         self.multicast_endp_types = multicast_endp_types
         self.multicast_tos = multicast_tos
@@ -334,8 +338,7 @@ class Mixed_Traffic(Realm):
         self.device_list = device_list
         self.result_dir = result_dir
         self.test_name = test_name
-        
-        
+
         if self.dowebgui:
             self.stopped = False
             self.ping_execution = False
@@ -381,14 +384,15 @@ class Mixed_Traffic(Realm):
                     self.test_duration = int(self.test_duration)
                 # Setting overall time formatting for report
                 if self.qos_serial_run:
-                    self.total_all_test_duration = int(self.test_duration * (len(self.tests) - 1 + len(self.qos_tos_list)))
+                    self.total_all_test_duration = int(
+                        self.test_duration * (len(self.tests) - 1 + len(self.qos_tos_list)))
                 else:
                     self.total_all_test_duration = int(self.test_duration * len(self.tests))
                 time_obj = time.gmtime(self.total_all_test_duration)
                 self.time_formate = time.strftime("%H:%M:%S", time_obj)
             elif self.ping_test_duration or self.qos_test_duration or self.ftp_test_duration or self.http_test_duration or self.multicast_test_duration:
                 if self.ping_test_duration.endswith(tuple(duration_suffixes.keys())) or self.qos_test_duration.endswith(
-                    tuple(duration_suffixes.keys())) or self.ftp_test_duration.endswith(
+                        tuple(duration_suffixes.keys())) or self.ftp_test_duration.endswith(
                     tuple(duration_suffixes.keys())) or self.http_test_duration.endswith(
                     tuple(duration_suffixes.keys())) or self.multicast_test_duration.endswith(
                     tuple(duration_suffixes.keys())):
@@ -462,8 +466,8 @@ class Mixed_Traffic(Realm):
                                                     radio=radio)
         # updating num stations and station list
         if not all_sta:
-            self.station_list = station_list
-            self.num_staions = num_stations
+            self.station_list.extend(station_list)
+            self.num_stations = len(self.station_list)
             self.radio = radio
         logger.info("Virtual station list for {band} : {station_list}".format(band=band, station_list=station_list))
         if "2.4G" in band:
@@ -471,7 +475,7 @@ class Mixed_Traffic(Realm):
         elif "5G" in band:
             self.station_profile.mode = 14
         elif "6G" in band:
-            self.station_profile.mode = 15
+            self.station_profile.mode = 19
         # station build
         self.station_profile.use_security(security, ssid, password)
         self.station_profile.set_number_template("00")
@@ -520,13 +524,13 @@ class Mixed_Traffic(Realm):
         selected_serial_list = self.base_interop_profile.query_all_devices_to_configure_wifi()
         logger.info(f"Selected Serial List: {selected_serial_list}")
         return selected_serial_list
-    
+
     def select_real_devices(self, real_devices, real_sta_list=None, base_interop_obj=None):
         self.real_sta_data_dict = {}
         if real_sta_list is None:
             if self.dowebgui:
                 self.user_query = real_devices.query_user(dowebgui=self.dowebgui
-                                                          ,device_list=self.device_list)
+                                                          , device_list=self.device_list)
                 self.real_sta_list = self.user_query[0]
             else:
                 self.user_query = real_devices.query_user()
@@ -625,28 +629,29 @@ class Mixed_Traffic(Realm):
             # starting part of the ping test
             self.ping_test_obj = ping_test.Ping(host=self.host, port=self.port, ssid=ssid, security=security,
                                                 password=password, lanforge_password="lanforge", target=self.target,
-                                                interval=self.interval, sta_list=[], virtual=self.virtual, real=self.real,
+                                                interval=self.interval, sta_list=[], virtual=self.virtual,
+                                                real=self.real,
                                                 duration=ping_test_duration)
             if not self.ping_test_obj.check_tab_exists():
                 print('Generic Tab is not available for Ping Test.\nAborting the test.')
                 exit(0)
             if self.real:
                 self.ping_test_obj.select_real_devices(real_devices=self.base_interop_profile,
-                                                    real_sta_list=self.user_query[0],
-                                                    base_interop_obj=self.base_interop_profile)
+                                                       real_sta_list=self.user_query[0],
+                                                       base_interop_obj=self.base_interop_profile)
                 # removing the existing generic endpoints & cxs
                 self.ping_test_obj.cleanup()
                 self.ping_test_obj.sta_list = self.user_query[0]
             elif self.virtual:
                 self.ping_test_obj.sta_list = self.station_list
-                print('Virtual Stations: {}'.format(self.station_list).replace('[', '').replace(']', '').replace('\'', ''))
+                print('Virtual Stations: {}'.format(self.station_list))
                 # #cleanup
                 for station in self.station_list:
                     print('Removing the station {} if exists'.format(station))
                     self.ping_test_obj.generic_endps_profile.created_cx.append(
-                        'CX_generic-{}'.format(station.split('.')[2]))
+                        'CX_generic-{}'.format(station.split('.')[2]) if '.' in station else station)
                     self.ping_test_obj.generic_endps_profile.created_endp.append(
-                        'generic-{}'.format(station.split('.')[2]))
+                        'generic-{}'.format(station.split('.')[2]) if '.' in station else station)
                 self.ping_test_obj.generic_endps_profile.cleanup()
                 self.ping_test_obj.generic_endps_profile.created_cx = []
                 self.ping_test_obj.generic_endps_profile.created_endp = []
@@ -663,26 +668,26 @@ class Mixed_Traffic(Realm):
                 ports_data[port] = port_data
             if self.dowebgui:
                 start_time = datetime.datetime.now()
-                end_time = start_time+datetime.timedelta(seconds=ping_test_duration*60)
+                end_time = start_time + datetime.timedelta(seconds=ping_test_duration * 60)
                 temp_json = []
-                while(datetime.datetime.now()<end_time):
+                while (datetime.datetime.now() < end_time):
                     temp_json = []
-                    temp_checked_sta=[]
+                    temp_checked_sta = []
                     temp_result_data = self.ping_test_obj.get_results()
-                    if(type(temp_result_data) == dict):
+                    if (type(temp_result_data) == dict):
                         for station in self.ping_test_obj.real_sta_list:
                             current_device_data = ports_data[station]
                             if (station in temp_result_data['name']):
                                 temp_json.append({
-                                'device':station,
-                                'sent': temp_result_data['tx pkts'],
-                                'recv': temp_result_data['rx pkts'],
-                                'dropped': temp_result_data['dropped'],
-                                'status':"Running",
-                                'start_time':start_time.strftime("%d/%m %I:%M:%S %p"),
-                                'end_time':end_time.strftime("%d/%m %I:%M:%S %p"),
-                                "remaining_time":""
-                            })
+                                    'device': station,
+                                    'sent': temp_result_data['tx pkts'],
+                                    'recv': temp_result_data['rx pkts'],
+                                    'dropped': temp_result_data['dropped'],
+                                    'status': "Running",
+                                    'start_time': start_time.strftime("%d/%m %I:%M:%S %p"),
+                                    'end_time': end_time.strftime("%d/%m %I:%M:%S %p"),
+                                    "remaining_time": ""
+                                })
                     else:
                         for station in self.ping_test_obj.real_sta_list:
                             current_device_data = ports_data[station]
@@ -690,20 +695,22 @@ class Mixed_Traffic(Realm):
                                 ping_endp, ping_data = list(ping_device.keys())[0], list(ping_device.values())[0]
                                 if station.split('-')[-1] in ping_endp and station not in temp_checked_sta:
                                     temp_checked_sta.append(station)
-                                    temp_json.append ({
-                                            'device':station,
-                                            'sent': ping_data['tx pkts'],
-                                            'recv': ping_data['rx pkts'],
-                                            'dropped': ping_data['dropped'],
-                                            'status':"Running",
-                                            'start_time':start_time.strftime("%d/%m %I:%M:%S %p"),
-                                            'end_time':end_time.strftime("%d/%m %I:%M:%S %p"),
-                                            "remaining_time":""
-                                        })       
-                    df1=pd.DataFrame(temp_json)
-                    df1.to_csv('{}/ping_datavalues.csv'.format(self.result_dir),index=False)
+                                    temp_json.append({
+                                        'device': station,
+                                        'sent': ping_data['tx pkts'],
+                                        'recv': ping_data['rx pkts'],
+                                        'dropped': ping_data['dropped'],
+                                        'status': "Running",
+                                        'start_time': start_time.strftime("%d/%m %I:%M:%S %p"),
+                                        'end_time': end_time.strftime("%d/%m %I:%M:%S %p"),
+                                        "remaining_time": ""
+                                    })
+                    df1 = pd.DataFrame(temp_json)
+                    df1.to_csv('{}/ping_datavalues.csv'.format(self.result_dir), index=False)
                     try:
-                        with open(self.result_dir+"/../../Running_instances/{}_{}_running.json".format(self.host,self.test_name), 'r') as file:
+                        with open(self.result_dir + "/../../Running_instances/{}_{}_running.json".format(self.host,
+                                                                                                         self.test_name),
+                                  'r') as file:
                             data = json.load(file)
                             if data["status"] != "Running":
                                 logging.info('Test is stopped by the user')
@@ -728,17 +735,34 @@ class Mixed_Traffic(Realm):
                                 'sent': result_data['tx pkts'],
                                 'recv': result_data['rx pkts'],
                                 'dropped': result_data['dropped'],
-                                'min_rtt': [result_data['last results'].split('\n')[-2].split()[-1].split(':')[-1].split('/')[0] if len(result_data['last results']) != 0 and 'min/avg/max' in result_data['last results'].split('\n')[-2] else '0'][0],
-                                'avg_rtt': [result_data['last results'].split('\n')[-2].split()[-1].split(':')[-1].split('/')[1] if len(result_data['last results']) != 0 and 'min/avg/max' in result_data['last results'].split('\n')[-2] else '0'][0],
-                                'max_rtt': [result_data['last results'].split('\n')[-2].split()[-1].split(':')[-1].split('/')[2] if len(result_data['last results']) != 0 and 'min/avg/max' in result_data['last results'].split('\n')[-2] else '0'][0],
+                                'min_rtt': [
+                                    result_data['last results'].split('\n')[-2].split()[-1].split(':')[-1].split('/')[
+                                        0] if len(result_data['last results']) != 0 and 'min/avg/max' in
+                                              result_data['last results'].split('\n')[-2] else '0'][0],
+                                'avg_rtt': [
+                                    result_data['last results'].split('\n')[-2].split()[-1].split(':')[-1].split('/')[
+                                        1] if len(result_data['last results']) != 0 and 'min/avg/max' in
+                                              result_data['last results'].split('\n')[-2] else '0'][0],
+                                'max_rtt': [
+                                    result_data['last results'].split('\n')[-2].split()[-1].split(':')[-1].split('/')[
+                                        2] if len(result_data['last results']) != 0 and 'min/avg/max' in
+                                              result_data['last results'].split('\n')[-2] else '0'][0],
                                 'mac': current_device_data['mac'],
                                 'channel': current_device_data['channel'],
                                 'ssid': current_device_data['ssid'],
                                 'mode': current_device_data['mode'],
-                                'name': [current_device_data['user'] if current_device_data['user'] != '' else current_device_data['hostname']][0],
-                                'os': ['Windows' if 'Win' in current_device_data['hw version'] else 'Linux' if 'Linux' in current_device_data['hw version'] else 'Mac' if 'Apple' in current_device_data['hw version'] else 'Android'][0],
+                                'name': [current_device_data['user'] if current_device_data['user'] != '' else
+                                         current_device_data['hostname']][0],
+                                'os': [
+                                    'Windows' if 'Win' in current_device_data['hw version'] else 'Linux' if 'Linux' in
+                                                                                                            current_device_data[
+                                                                                                                'hw version'] else 'Mac' if 'Apple' in
+                                                                                                                                            current_device_data[
+                                                                                                                                                'hw version'] else 'Android'][
+                                    0],
                                 'remarks': [],
-                                'last_result': [result_data['last results'].split('\n')[-2] if len(result_data['last results']) != 0 else ""][0]}
+                                'last_result': [result_data['last results'].split('\n')[-2] if len(
+                                    result_data['last results']) != 0 else ""][0]}
                             result_json[station]['remarks'] = self.ping_test_obj.generate_remarks(result_json[station])
                 else:
                     for station in self.ping_test_obj.sta_list:
@@ -751,18 +775,33 @@ class Mixed_Traffic(Realm):
                                     'sent': ping_data['tx pkts'],
                                     'recv': ping_data['rx pkts'],
                                     'dropped': ping_data['dropped'],
-                                    'min_rtt': [ping_data['last results'].split('\n')[-2].split()[-1].split(':')[-1].split('/')[0] if len(ping_data['last results']) != 0 and 'min/avg/max' in ping_data['last results'].split('\n')[-2] else '0'][0],
-                                    'avg_rtt': [ping_data['last results'].split('\n')[-2].split()[-1].split(':')[-1].split('/')[1] if len(ping_data['last results']) != 0 and 'min/avg/max' in ping_data['last results'].split('\n')[-2] else '0'][0],
-                                    'max_rtt': [ping_data['last results'].split('\n')[-2].split()[-1].split(':')[-1].split('/')[2] if len(ping_data['last results']) != 0 and 'min/avg/max' in ping_data['last results'].split('\n')[-2] else '0'][0],
+                                    'min_rtt': [
+                                        ping_data['last results'].split('\n')[-2].split()[-1].split(':')[-1].split('/')[
+                                            0] if len(ping_data['last results']) != 0 and 'min/avg/max' in
+                                                  ping_data['last results'].split('\n')[-2] else '0'][0],
+                                    'avg_rtt': [
+                                        ping_data['last results'].split('\n')[-2].split()[-1].split(':')[-1].split('/')[
+                                            1] if len(ping_data['last results']) != 0 and 'min/avg/max' in
+                                                  ping_data['last results'].split('\n')[-2] else '0'][0],
+                                    'max_rtt': [
+                                        ping_data['last results'].split('\n')[-2].split()[-1].split(':')[-1].split('/')[
+                                            2] if len(ping_data['last results']) != 0 and 'min/avg/max' in
+                                                  ping_data['last results'].split('\n')[-2] else '0'][0],
                                     'mac': current_device_data['mac'],
                                     'channel': current_device_data['channel'],
                                     'ssid': current_device_data['ssid'],
                                     'mode': current_device_data['mode'],
-                                    'name': [current_device_data['user'] if current_device_data['user'] != '' else current_device_data['hostname']][0],
-                                    'os': ['Windows' if 'Win' in current_device_data['hw version'] else 'Linux' if 'Linux' in current_device_data['hw version'] else 'Mac' if 'Apple' in current_device_data['hw version'] else 'Android'][0],
+                                    'name': [current_device_data['user'] if current_device_data['user'] != '' else
+                                             current_device_data['hostname']][0],
+                                    'os': ['Windows' if 'Win' in current_device_data[
+                                        'hw version'] else 'Linux' if 'Linux' in current_device_data[
+                                        'hw version'] else 'Mac' if 'Apple' in current_device_data[
+                                        'hw version'] else 'Android'][0],
                                     'remarks': [],
-                                    'last_result': [ping_data['last results'].split('\n')[-2] if len(ping_data['last results']) != 0 else ""][0]}
-                                result_json[station]['remarks'] = self.ping_test_obj.generate_remarks(result_json[station])
+                                    'last_result': [ping_data['last results'].split('\n')[-2] if len(
+                                        ping_data['last results']) != 0 else ""][0]}
+                                result_json[station]['remarks'] = self.ping_test_obj.generate_remarks(
+                                    result_json[station])
             if self.virtual:
                 ports_data_dict = self.ping_test_obj.json_get('/ports/all/')['interfaces']
                 ports_data = {}
@@ -779,9 +818,21 @@ class Mixed_Traffic(Realm):
                                     'sent': result_data['tx pkts'],
                                     'recv': result_data['rx pkts'],
                                     'dropped': result_data['dropped'],
-                                    'min_rtt': [result_data['last results'].split('\n')[-2].split()[-1].split('/')[0] if len(result_data['last results']) != 0 and 'min/avg/max' in result_data['last results'].split('\n')[-2] else '0'][0],
-                                    'avg_rtt': [result_data['last results'].split('\n')[-2].split()[-1].split('/')[1] if len(result_data['last results']) != 0 and 'min/avg/max' in result_data['last results'].split('\n')[-2] else '0'][0],
-                                    'max_rtt': [result_data['last results'].split('\n')[-2].split()[-1].split('/')[2] if len(result_data['last results']) != 0 and 'min/avg/max' in result_data['last results'].split('\n')[-2] else '0'][0],
+                                    'min_rtt': [
+                                        result_data['last results'].split('\n')[-2].split()[-1].split('/')[0] if len(
+                                            result_data['last results']) != 0 and 'min/avg/max' in result_data[
+                                                                                                                     'last results'].split(
+                                            '\n')[-2] else '0'][0],
+                                    'avg_rtt': [
+                                        result_data['last results'].split('\n')[-2].split()[-1].split('/')[1] if len(
+                                            result_data['last results']) != 0 and 'min/avg/max' in result_data[
+                                                                                                                     'last results'].split(
+                                            '\n')[-2] else '0'][0],
+                                    'max_rtt': [
+                                        result_data['last results'].split('\n')[-2].split()[-1].split('/')[2] if len(
+                                            result_data['last results']) != 0 and 'min/avg/max' in result_data[
+                                                                                                                     'last results'].split(
+                                            '\n')[-2] else '0'][0],
                                     'mac': current_device_data['mac'],
                                     'channel': current_device_data['channel'],
                                     'ssid': current_device_data['ssid'],
@@ -789,8 +840,10 @@ class Mixed_Traffic(Realm):
                                     'name': station,
                                     'os': 'Virtual',
                                     'remarks': [],
-                                    'last_result': [result_data['last results'].split('\n')[-2] if len(result_data['last results']) != 0 else ""][0]}
-                                result_json[station]['remarks'] = self.ping_test_obj.generate_remarks(result_json[station])
+                                    'last_result': [result_data['last results'].split('\n')[-2] if len(
+                                        result_data['last results']) != 0 else ""][0]}
+                                result_json[station]['remarks'] = self.ping_test_obj.generate_remarks(
+                                    result_json[station])
                 else:
                     for station in self.ping_test_obj.sta_list:
                         if station not in self.ping_test_obj.real_sta_list:
@@ -803,9 +856,21 @@ class Mixed_Traffic(Realm):
                                         'sent': ping_data['tx pkts'],
                                         'recv': ping_data['rx pkts'],
                                         'dropped': ping_data['dropped'],
-                                        'min_rtt': [ping_data['last results'].split('\n')[-2].split()[-1].split('/')[0] if len(ping_data['last results']) != 0 and 'min/avg/max' in ping_data['last results'].split('\n')[-2] else '0'][0],
-                                        'avg_rtt': [ping_data['last results'].split('\n')[-2].split()[-1].split('/')[1] if len(ping_data['last results']) != 0 and 'min/avg/max' in ping_data['last results'].split('\n')[-2] else '0'][0],
-                                        'max_rtt': [ping_data['last results'].split('\n')[-2].split()[-1].split('/')[2] if len(ping_data['last results']) != 0 and 'min/avg/max' in ping_data['last results'].split('\n')[-2] else '0'][0],
+                                        'min_rtt': [
+                                            ping_data['last results'].split('\n')[-2].split()[-1].split('/')[0] if len(
+                                                ping_data['last results']) != 0 and 'min/avg/max' in ping_data[
+                                                                                                                       'last results'].split(
+                                                '\n')[-2] else '0'][0],
+                                        'avg_rtt': [
+                                            ping_data['last results'].split('\n')[-2].split()[-1].split('/')[1] if len(
+                                                ping_data['last results']) != 0 and 'min/avg/max' in ping_data[
+                                                                                                                       'last results'].split(
+                                                '\n')[-2] else '0'][0],
+                                        'max_rtt': [
+                                            ping_data['last results'].split('\n')[-2].split()[-1].split('/')[2] if len(
+                                                ping_data['last results']) != 0 and 'min/avg/max' in ping_data[
+                                                                                                                       'last results'].split(
+                                                '\n')[-2] else '0'][0],
                                         'mac': current_device_data['mac'],
                                         'channel': current_device_data['channel'],
                                         'ssid': current_device_data['ssid'],
@@ -813,41 +878,44 @@ class Mixed_Traffic(Realm):
                                         'name': station,
                                         'os': 'Virtual',
                                         'remarks': [],
-                                        'last_result': [ping_data['last results'].split('\n')[-2] if len(ping_data['last results']) != 0 else ""][0]}
-                                    result_json[station]['remarks'] = self.ping_test_obj.generate_remarks(result_json[station])
+                                        'last_result': [ping_data['last results'].split('\n')[-2] if len(
+                                            ping_data['last results']) != 0 else ""][0]}
+                                    result_json[station]['remarks'] = self.ping_test_obj.generate_remarks(
+                                        result_json[station])
             if self.dowebgui:
                 temp_json = []
                 for station in result_json:
-                    logging.debug('{} {}'.format(station,result_json[station]))
-                    temp_json.append({'device':station,
-                                        'sent': result_json[station]['sent'],
-                                        'recv': result_json[station]['recv'],
-                                        'dropped': result_json[station]['dropped'],
-                                        'status':"Stopped",
-                                        'start_time':start_time.strftime("%d/%m %I:%M:%S %p"),
-                                        'end_time':end_time.strftime("%d/%m %I:%M:%S %p"),
-                                        "remaining_time":""})
-                df1=pd.DataFrame(temp_json)
-                df1.to_csv('{}/ping_datavalues.csv'.format(self.result_dir),index=False)
+                    logging.debug('{} {}'.format(station, result_json[station]))
+                    temp_json.append({'device': station,
+                                      'sent': result_json[station]['sent'],
+                                      'recv': result_json[station]['recv'],
+                                      'dropped': result_json[station]['dropped'],
+                                      'status': "Stopped",
+                                      'start_time': start_time.strftime("%d/%m %I:%M:%S %p"),
+                                      'end_time': end_time.strftime("%d/%m %I:%M:%S %p"),
+                                      "remaining_time": ""})
+                df1 = pd.DataFrame(temp_json)
+                df1.to_csv('{}/ping_datavalues.csv'.format(self.result_dir), index=False)
             else:
                 logger.info("Final Result Json For Ping Test: {}".format(result_json))
             if all_bands:
                 band = ''
             else:
                 band = '_' + self.band
-            self.ping_test_obj.generate_report(result_json=result_json, result_dir=f'Ping_Test_Report{band}',
-                                            report_path=self.report_path)
+            self.ping_test_obj.generate_report(result_json=result_json, result_dir=f'Ping_Test_Report',
+                                               report_path=self.report_path)
             self.ping_test_status = True
-            if(conn):
+            if (conn):
                 conn.send([self.ping_test_obj, True])
         except Exception as e:
             # traceback.print_exc()
             logging.exception(e)
-            if(conn):
+            if (conn):
                 conn.send(['', False])
 
     def qos_test(self, ssid, password, security, ap_name, upstream, tos, traffic_type, side_a_min=0, side_b_min=0,
-                 side_a_max=0, side_b_max=0, _qos_test=qos_test, _qos_test_virtual=qos_test_virtual, all_bands=False, conn=None):
+                 side_a_max=0, side_b_max=0, _qos_test=qos_test, _qos_test_virtual=qos_test_virtual, all_bands=False,
+                 conn=None):
         try:
             if self.test_duration:
                 self.qos_test_duration = self.test_duration
@@ -856,27 +924,27 @@ class Mixed_Traffic(Realm):
             # qos test for real clients
             def qos_test_overall_real(qos_tos_real=None):
                 self.qos_test_obj = qos_test.ThroughputQOS(host=self.host,
-                                                        port=self.port,
-                                                        number_template="0000",
-                                                        ap_name=ap_name,
-                                                        name_prefix="TOS-",
-                                                        tos=qos_tos_real if self.qos_serial_run else tos,
-                                                        ssid=ssid,
-                                                        password=password,
-                                                        security=security,
-                                                        upstream=upstream,
-                                                        test_duration=self.qos_test_duration,
-                                                        use_ht160=False,
-                                                        side_a_min_rate=int(side_a_min),
-                                                        side_b_min_rate=int(side_b_min),
-                                                        side_a_max_rate=int(side_a_max),
-                                                        side_b_max_rate=int(side_b_max),
-                                                        traffic_type=traffic_type,
-                                                        dowebgui = "True" if self.dowebgui else "False",
-                                                        test_name=self.test_name,
-                                                        result_dir=self.result_dir,
-                                                        ip=self.host,
-                                                        _debug_on=False)
+                                                           port=self.port,
+                                                           number_template="0000",
+                                                           ap_name=ap_name,
+                                                           name_prefix="TOS-",
+                                                           tos=qos_tos_real if self.qos_serial_run else tos,
+                                                           ssid=ssid,
+                                                           password=password,
+                                                           security=security,
+                                                           upstream=upstream,
+                                                           test_duration=self.qos_test_duration,
+                                                           use_ht160=False,
+                                                           side_a_min_rate=int(side_a_min),
+                                                           side_b_min_rate=int(side_b_min),
+                                                           side_a_max_rate=int(side_a_max),
+                                                           side_b_max_rate=int(side_b_max),
+                                                           traffic_type=traffic_type,
+                                                           dowebgui="True" if self.dowebgui else "False",
+                                                           test_name=self.test_name,
+                                                           result_dir=self.result_dir,
+                                                           ip=self.host,
+                                                           _debug_on=False)
 
                 self.qos_test_obj.input_devices_list = self.user_query[0]
                 self.qos_test_obj.real_client_list = self.user_query[1]
@@ -896,7 +964,6 @@ class Mixed_Traffic(Realm):
                 self.data.update(test_results)
                 test_end_time = datetime.datetime.now().strftime("%b %d %H:%M:%S")
                 logger.info("QOS Test ended at: {}".format(test_end_time))
-
 
                 self.qos_test_obj.cleanup()
                 logging.debug('data:{}'.format(self.data))
@@ -923,7 +990,8 @@ class Mixed_Traffic(Realm):
                         self.data1 = self.result3
                     if len(result_dicts) == 4:
                         print("yes - 4")
-                        self.result1, self.result2, self.result3, self.result4 = result_dicts[0], result_dicts[1], result_dicts[2], result_dicts[3]
+                        self.result1, self.result2, self.result3, self.result4 = result_dicts[0], result_dicts[1], \
+                        result_dicts[2], result_dicts[3]
                         self.data1 = self.result4
                     self.data = self.data1
                 if all_bands:
@@ -931,49 +999,55 @@ class Mixed_Traffic(Realm):
                 else:
                     band = '_' + self.band
                 self.qos_test_obj.generate_report(data=self.data,
-                                                input_setup_info={"contact": "support@candelatech.com"},
-                                                report_path=self.report_path,
-                                                result_dir_name=f"Qos_Test_Report_{qos_tos_real}{band}")
+                                                  input_setup_info={"contact": "support@candelatech.com"},
+                                                  report_path=self.report_path,
+                                                  result_dir_name=f"Qos_Test_Report")
 
                 self.data_set, self.load, self.res = self.qos_test_obj.generate_graph_data_set(self.data)
 
             # Qos Test for Virtual station
             def qos_test_overall_virtual(qos_tos_virtual=None):
+                if self.cv_scenario:
+                    bands = self.sta_info['band_list']
+                else:
+                    bands = self.band
                 self.throughput_qos_obj = qos_test_virtual.ThroughputQOS(host=self.host,
-                                                                        port=self.port,
-                                                                        number_template="0000",
-                                                                        ap_name=ap_name,
-                                                                        num_stations=self.num_staions,
-                                                                        sta_list=self.station_list,
-                                                                        create_sta=False,
-                                                                        name_prefix="TOS-",
-                                                                        upstream=self.upstream_port,
-                                                                        ssid=ssid,
-                                                                        password=password,
-                                                                        security=security,
-                                                                        ssid_2g=self.ssid_2g,
-                                                                        password_2g=self.passwd_2g,
-                                                                        security_2g=self.security_2g,
-                                                                        ssid_5g=self.ssid_5g,
-                                                                        password_5g=self.passwd_5g,
-                                                                        security_5g=self.security_5g,
-                                                                        ssid_6g=self.ssid_6g,
-                                                                        password_6g=self.passwd_6g,
-                                                                        security_6g=self.security_6g,
-                                                                        radio_2g=self.radio_2g,
-                                                                        radio_5g=self.radio_5g,
-                                                                        radio_6g=self.radio_6g,
-                                                                        test_duration=self.qos_test_duration,
-                                                                        use_ht160=False,
-                                                                        side_a_min_rate=int(side_a_min),
-                                                                        side_b_min_rate=int(side_b_min),
-                                                                        side_a_max_rate=int(side_a_max),
-                                                                        side_b_max_rate=int(side_b_max),
-                                                                        mode=self.mode,
-                                                                        bands=self.band,
-                                                                        traffic_type=traffic_type,
-                                                                        tos=qos_tos_virtual if self.qos_serial_run else tos,
-                                                                        test_case=[self.band])
+                                                                         port=self.port,
+                                                                         number_template="0000",
+                                                                         ap_name=ap_name,
+                                                                         num_stations=len(self.station_list),
+                                                                         sta_list=[station.split('.')[
+                                                                                       2] if '.' in station else station
+                                                                                   for station in self.station_list],
+                                                                         create_sta=False,
+                                                                         name_prefix="TOS-",
+                                                                         upstream=self.upstream_port,
+                                                                         ssid=ssid,
+                                                                         password=password,
+                                                                         security=security,
+                                                                         ssid_2g=self.ssid_2g,
+                                                                         password_2g=self.passwd_2g,
+                                                                         security_2g=self.security_2g,
+                                                                         ssid_5g=self.ssid_5g,
+                                                                         password_5g=self.passwd_5g,
+                                                                         security_5g=self.security_5g,
+                                                                         ssid_6g=self.ssid_6g,
+                                                                         password_6g=self.passwd_6g,
+                                                                         security_6g=self.security_6g,
+                                                                         radio_2g=self.radio_2g,
+                                                                         radio_5g=self.radio_5g,
+                                                                         radio_6g=self.radio_6g,
+                                                                         test_duration=self.qos_test_duration,
+                                                                         use_ht160=False,
+                                                                         side_a_min_rate=int(side_a_min),
+                                                                         side_b_min_rate=int(side_b_min),
+                                                                         side_a_max_rate=int(side_a_max),
+                                                                         side_b_max_rate=int(side_b_max),
+                                                                         mode=self.mode,
+                                                                         bands=self.band,
+                                                                         traffic_type=traffic_type,
+                                                                         tos=qos_tos_virtual if self.qos_serial_run else tos,
+                                                                         test_case=[bands])
                 # throughput_qos.pre_cleanup()
                 self.throughput_qos_obj.build()
 
@@ -987,16 +1061,18 @@ class Mixed_Traffic(Realm):
                 print("connections upload", connections_upload)
                 self.throughput_qos_obj.stop()
                 time.sleep(5)
-                test_results['test_results'].append(self.throughput_qos_obj.evaluate_qos(connections_download, connections_upload, drop_a_per, drop_b_per))
-                self.data.update({self.band: test_results})  # right now it will only work for single band
+                test_results['test_results'].append(
+                    self.throughput_qos_obj.evaluate_qos(connections_download, connections_upload, drop_a_per,
+                                                         drop_b_per))
+                self.data.update({bands: test_results})  # right now it will only work for single band
                 self.throughput_qos_obj.cx_profile.cleanup()
                 logging.debug('data:{}'.format(self.data))
                 if self.qos_serial_run:
                     self.result1, self.result2, self.result3, self.result4 = {}, {}, {}, {}
                     # separating dictionaries for each value in the list
                     result_dicts = []
-                    for item in self.data[self.band]['test_results']:
-                        result_dict = {self.band: {'test_results': [item]}}
+                    for item in self.data[bands]['test_results']:
+                        result_dict = {bands: {'test_results': [item]}}
                         result_dicts.append(result_dict)
                     print("RES", result_dicts)
 
@@ -1014,7 +1090,8 @@ class Mixed_Traffic(Realm):
                         self.data1 = self.result3
                     if len(result_dicts) == 4:
                         print("yes - 4")
-                        self.result1, self.result2, self.result3, self.result4 = result_dicts[0], result_dicts[1], result_dicts[2], result_dicts[3]
+                        self.result1, self.result2, self.result3, self.result4 = result_dicts[0], result_dicts[1], \
+                        result_dicts[2], result_dicts[3]
                         self.data1 = self.result4
                     self.data = self.data1
 
@@ -1033,11 +1110,12 @@ class Mixed_Traffic(Realm):
                 if all_bands:
                     band = ''
                 else:
-                    band = '_' + self.band
+                    band = '_' + bands
+                logger.info(self.data)
                 self.throughput_qos_obj.generate_report(data=self.data,
                                                         input_setup_info={"contact": "support@candelatech.com"},
                                                         report_path=self.report_path,
-                                                        result_dir_name=f"Qos_Test_Report_{qos_tos_virtual}{band}"
+                                                        result_dir_name=f"Qos_Test_Report"
                                                         )
                 self.data_set, self.load, self.res = self.throughput_qos_obj.generate_graph_data_set(self.data)
 
@@ -1047,7 +1125,7 @@ class Mixed_Traffic(Realm):
                         qos_test_overall_real(qos_tos)
                 else:
                     qos_test_overall_real()
-                if(conn):
+                if (conn):
                     conn.send([self.qos_test_obj, self.data_set, self.load, self.res, True])
             if self.virtual:
                 if self.qos_serial_run:
@@ -1055,16 +1133,17 @@ class Mixed_Traffic(Realm):
                         qos_test_overall_virtual(qos_tos)
                 else:
                     qos_test_overall_virtual()
-                if(conn):
+                if (conn):
                     conn.send([self.throughput_qos_obj, self.data_set, self.load, self.res, True])
             self.qos_test_status = True
         except Exception as e:
             # traceback.print_exc()
             logging.exception(e)
-            if(conn):
+            if (conn):
                 conn.send(['', '', '', '', False])
 
-    def ftp_test(self, ssid, password, security, bands, directions, file_sizes, ftp_test=ftp_test, all_bands=False, conn=None):
+    def ftp_test(self, ssid, password, security, bands, directions, file_sizes, ftp_test=ftp_test, all_bands=False,
+                 conn=None):
         try:
             if self.test_duration:
                 self.ftp_test_duration = self.test_duration
@@ -1079,26 +1158,26 @@ class Mixed_Traffic(Realm):
             for direction in directions:
                 for file_size in file_sizes:
                     self.ftp_test_obj = ftp_test.FtpTest(lfclient_host=self.host,
-                                                            lfclient_port=self.port,
-                                                            upstream=self.upstream_port,
-                                                            dut_ssid=ssid,
-                                                            dut_passwd=password,
-                                                            dut_security=security,
-                                                            ap_name=self.dut_model,
-                                                            band=self.band,
-                                                            file_size=file_size,
-                                                            direction=direction,
-                                                            twog_radio=self.radio_2g,
-                                                            fiveg_radio=self.radio_5g,
-                                                            sixg_radio=self.radio_6g,
-                                                            lf_username=self.lf_username,
-                                                            lf_password=self.lf_password,
-                                                            traffic_duration=self.ftp_test_duration,
-                                                            ssh_port=22,
-                                                            clients_type=client_type,
-                                                            dowebgui = "True" if self.dowebgui else "False",
-                                                            result_dir=self.result_dir,
-                                                            test_name=self.test_name)
+                                                         lfclient_port=self.port,
+                                                         upstream=self.upstream_port,
+                                                         dut_ssid=ssid,
+                                                         dut_passwd=password,
+                                                         dut_security=security,
+                                                         ap_name=self.dut_model,
+                                                         band=self.band,
+                                                         file_size=file_size,
+                                                         direction=direction,
+                                                         twog_radio=self.radio_2g,
+                                                         fiveg_radio=self.radio_5g,
+                                                         sixg_radio=self.radio_6g,
+                                                         lf_username=self.lf_username,
+                                                         lf_password=self.lf_password,
+                                                         traffic_duration=self.ftp_test_duration,
+                                                         ssh_port=22,
+                                                         clients_type=client_type,
+                                                         dowebgui="True" if self.dowebgui else "False",
+                                                         result_dir=self.result_dir,
+                                                         test_name=self.test_name)
                     interation_num = interation_num + 1
                     self.ftp_test_obj.file_create()
                     if self.real:
@@ -1114,19 +1193,23 @@ class Mixed_Traffic(Realm):
                         self.ftp_test_obj.station_list = self.station_list
                         self.ftp_test_obj.band = self.band  # since we will have only single band
                         self.ftp_test_obj.radio = []
-                        self.ftp_test_obj.num_sta = self.num_staions
+                        self.ftp_test_obj.num_sta = len(self.station_list)
                         self.ftp_test_obj.count = 0
                         self.ftp_test_obj.set_values()
                         # pre cleanup layer-4 endpoints
-                        self.cleanup.layer4_endp_clean()
+                        # self.cleanup.layer4_endp_clean()
                         self.ftp_test_obj.build()
                     if not self.ftp_test_obj.passes():
                         logger.info(self.ftp_test_obj.get_fail_message())
 
                     time1 = datetime.datetime.now()
                     logger.info("FTP Traffic started running at {}".format(time1))
-                    self.ftp_test_obj.start(False, False)
-                    if self.dowebgui:    
+                    if not self.cv_scenario:
+                        self.ftp_test_obj.start(False, False)
+                    else:
+                        for _ in self.sta_info['radio_list']:
+                            self.ftp_test_obj.cx_profile.start_cx()
+                    if self.dowebgui:
                         self.ftp_test_obj.monitor_for_runtime_csv()
                     else:
                         time.sleep(self.ftp_test_duration)
@@ -1143,32 +1226,34 @@ class Mixed_Traffic(Realm):
                 band = '_' + self.band
             date = str(datetime.datetime.now()).split(",")[0].replace(" ", "-").split(".")[0]
             self.ftp_test_obj.generate_report(ftp_data, date, input_setup_info="", test_rig="", test_tag="",
-                                            dut_hw_version="", dut_sw_version="", dut_model_num="", dut_serial_num="",
-                                            test_id="", bands=bands, csv_outfile=f"ftp_test{band}",
-                                            local_lf_report_dir="", _results_dir_name=f'Ftp_Test_Report{band}',
-                                            report_path=self.report_path)
+                                              dut_hw_version="", dut_sw_version="", dut_model_num="", dut_serial_num="",
+                                              test_id="", bands=bands, csv_outfile=f"ftp_test{band}",
+                                              local_lf_report_dir="", _results_dir_name=f'Ftp_Test_Report{band}',
+                                              report_path=self.report_path)
             self.ftp_test_status = True
-            if(conn):
+            if (conn):
                 conn.send([self.ftp_test_obj, True])
         except Exception as e:
             # traceback.print_exc()
             logging.exception(e)
-            if(conn):
+            if (conn):
                 conn.send(['', False])
 
-    def http_test(self, ssid, password, security, http_file_size, target_per_ten, http_test=http_test, all_bands=False, conn=None):
+    def http_test(self, ssid, password, security, http_file_size, target_per_ten, http_test=http_test, all_bands=False,
+                  conn=None):
         try:
             if self.test_duration:
                 self.http_test_duration = self.test_duration
             # Error checking to prevent case issues
-            Bands =[self.band]
+
+            Bands = [self.sta_info['band_list'] if self.cv_scenario else self.band]
             for bands in range(len(Bands)):
                 Bands[bands] = Bands[bands].upper()
                 if Bands[bands] == "BOTH":
                     Bands[bands] = "Both"
 
             # Error checking for non-existent bands
-            valid_bands = ['2.4G', '5G', '6G', 'Both']
+            valid_bands = ['2.4G', '5G', '6G', 'Both', '-']
             for bands in Bands:
                 if bands not in valid_bands:
                     raise ValueError("Invalid band '%s' used in bands argument!" % bands)
@@ -1177,11 +1262,11 @@ class Mixed_Traffic(Realm):
             if len(Bands) > 1 and "Both" in Bands:
                 raise ValueError("'Both' test type must be used independently!")
 
-
             list2G, list2G_bytes, list2G_speed, list2G_urltimes = [], [], [], []
             list5G, list5G_bytes, list5G_speed, list5G_urltimes = [], [], [], []
             list6G, list6G_bytes, list6G_speed, list6G_urltimes = [], [], [], []
             Both, Both_bytes, Both_speed, Both_urltimes = [], [], [], []
+            Auto, Auto_bytes, Auto_speed, Auto_urltimes = [], [], [], []
             dict_keys = []
             dict_keys.extend(Bands)
             final_dict = dict.fromkeys(dict_keys)
@@ -1194,6 +1279,9 @@ class Mixed_Traffic(Realm):
             max_both = []
             avg2, avg5, avg6 = [], [], []
             avg_both = []
+            min_Auto = []
+            max_Auto = []
+            avg_Auto = []
             test_time = ""
             client_type = ""
             http_sta_list = []
@@ -1207,14 +1295,18 @@ class Mixed_Traffic(Realm):
                 http_sta_list = self.station_list
                 num_stations = len(self.station_list)
             self.http_obj = http_test.HttpDownload(lfclient_host=self.host, lfclient_port=self.port,
-                                                upstream=self.upstream_port,
-                                                num_sta=len(self.user_query[0]) if self.real else len(self.station_list),
-                                                ap_name=self.dut_model, ssid=ssid, password=password, security=security,
-                                                target_per_ten=target_per_ten, file_size=http_file_size, bands=self.band,
-                                                client_type=client_type, lf_username=self.lf_username,
-                                                lf_password=self.lf_password,dowebgui = "True" if self.dowebgui else "False",
-                                                result_dir=self.result_dir,
-                                                test_name=self.test_name)
+                                                   upstream=self.upstream_port,
+                                                   num_sta=len(self.user_query[0]) if self.real else len(
+                                                       self.station_list),
+                                                   ap_name=self.dut_model, ssid=ssid, password=password,
+                                                   security=security,
+                                                   target_per_ten=target_per_ten, file_size=http_file_size,
+                                                   bands=self.band,
+                                                   client_type=client_type, lf_username=self.lf_username,
+                                                   lf_password=self.lf_password,
+                                                   dowebgui="True" if self.dowebgui else "False",
+                                                   result_dir=self.result_dir,
+                                                   test_name=self.test_name)
             if self.real:
                 self.http_obj.port_list = self.user_query[0]
                 self.http_obj.devices_list = self.user_query[1]
@@ -1230,17 +1322,17 @@ class Mixed_Traffic(Realm):
                 # self.http_obj.station_profile.station_names = self.station_list
                 self.http_obj.bands = self.band  # since we will have only single band
                 self.http_obj.radio = []
-                self.http_obj.num_sta = self.num_staions
+                self.http_obj.num_sta = self.num_stations
                 self.http_obj.file_create(ssh_port=22)
                 # self.http_obj.set_values()
                 # print(self.station_list)
                 # self.http_obj.station_list = [[self.station_list]]
-                self.cleanup.layer4_endp_clean()
+                # self.cleanup.layer4_endp_clean()
                 self.station_profile.admin_up()
                 logger.info("Waiting until the all station ports are up. Max time out is 300 seconds.")
                 if not LFUtils.wait_until_ports_admin_up(base_url=self.lfclient_url,
-                                                            port_list=self.station_list,
-                                                            debug_=self.debug):
+                                                         port_list=self.station_list,
+                                                         debug_=self.debug):
                     self._fail("Unable to bring all stations up")
                     return
                 logger.info("Waiting to get IP for all stations...")
@@ -1261,16 +1353,18 @@ class Mixed_Traffic(Realm):
                         if interface == j:
                             ip_upstream = i[interface]['ip']
                 if ip_upstream is not None:
-                    self.http_obj.http_profile.create(ports=self.station_list, sleep_time=.5,
-                                                        suppress_related_commands_=None, http=True, user=self.lf_username,
-                                                        passwd=self.lf_password,
-                                                        http_ip=ip_upstream + "/webpage.html", proxy_auth_type=0x200, timeout=1000)
+                    sta_lst = self.sta_info['station_list'] if self.cv_scenario else self.station_list
+                    self.http_obj.http_profile.create(ports=sta_lst, sleep_time=.5,
+                                                      suppress_related_commands_=None, http=True, user=self.lf_username,
+                                                      passwd=self.lf_password,
+                                                      http_ip=ip_upstream + "/webpage.html", proxy_auth_type=0x200,
+                                                      timeout=1000)
             test_time = datetime.datetime.now().strftime("%b %d %H:%M:%S")
             logger.info("HTTP Test started at {}".format(test_time))
             self.http_obj.start()
             if self.dowebgui:
                 self.http_obj.monitor_for_runtime_csv(self.http_test_duration)
-            else:    
+            else:
                 time.sleep(self.http_test_duration)
             self.http_obj.stop()
             uc_avg_val = self.http_obj.my_monitor('uc-avg')
@@ -1339,7 +1433,21 @@ class Mixed_Traffic(Realm):
                 final_dict['Both']['bytes_rd'] = Both_bytes
                 final_dict['Both']['speed'] = Both_speed
                 final_dict['Both']['url_times'] = Both_urltimes
-
+            else:
+                Auto.extend(uc_avg_val)
+                Auto_bytes.extend(rx_bytes_val)
+                Auto_speed.extend(rx_rate_val)
+                Auto_urltimes.extend(url_times)
+                final_dict['-']['dl_time'] = Auto
+                min_Auto.append(min(Auto))
+                final_dict['-']['min'] = min_Auto
+                max_Auto.append(max(Auto))
+                final_dict['-']['max'] = max_Auto
+                avg_Auto.append((sum(Auto) / num_stations))
+                final_dict['-']['avg'] = avg_Auto
+                final_dict['-']['bytes_rd'] = Auto_bytes
+                final_dict['-']['speed'] = Auto_speed
+                final_dict['-']['url_times'] = Auto_urltimes
             result_data = final_dict
             logger.info("HTTP Test Result {}".format(result_data))
             test_end = datetime.datetime.now().strftime("%b %d %H:%M:%S")
@@ -1383,22 +1491,22 @@ class Mixed_Traffic(Realm):
             else:
                 band = '_' + self.band
             self.http_obj.generate_report(date, num_stations=len(http_sta_list), duration=self.http_test_duration,
-                                        test_setup_info=test_setup_info, dataset=self.dataset, lis=self.lis,
-                                        bands=Bands, threshold_2g="", threshold_5g="", threshold_both="",
-                                        dataset1=self.dataset1,
-                                        dataset2=self.dataset2, result_data=result_data, test_rig="", test_tag="",
-                                        dut_hw_version="", dut_sw_version="", dut_model_num="", dut_serial_num="",
-                                        test_id="", test_input_infor="", csv_outfile="",
-                                        _results_dir_name=f'Webpage_Test_Report{band}',
-                                        report_path=self.report_path)
-            self.cleanup.layer4_endp_clean()
+                                          test_setup_info=test_setup_info, dataset=self.dataset, lis=self.lis,
+                                          bands=Bands, threshold_2g="", threshold_5g="", threshold_both="",
+                                          dataset1=self.dataset1,
+                                          dataset2=self.dataset2, result_data=result_data, test_rig="", test_tag="",
+                                          dut_hw_version="", dut_sw_version="", dut_model_num="", dut_serial_num="",
+                                          test_id="", test_input_infor="", csv_outfile="",
+                                          _results_dir_name=f'Webpage_Test_Report',
+                                          report_path=self.report_path)
+            # self.cleanup.layer4_endp_clean()
             self.http_test_status = True
-            if(conn):
+            if (conn):
                 conn.send([self.http_obj, self.dataset, self.dataset1, self.dataset2, self.bytes_rd, self.lis, True])
         except Exception as e:
             # traceback.print_exc()
             logging.exception(e)
-            if(conn):
+            if (conn):
                 conn.send(
                     [[], [], {}, {}, '', '', False]
                 )
@@ -1415,8 +1523,8 @@ class Mixed_Traffic(Realm):
             self.mc_tos = mc_tos
 
             if self.virtual:
-                self.radio_name_list = [self.radio]
-                self.num_sta_per_radio_list = [self.num_staions]
+                # self.radio_name_list = [self.radio]
+                self.num_sta_per_radio_list = [self.num_stations]
                 self.ssid_list = [self.ssid]
                 self.ssid_password_list = [self.passwd]
                 self.ssid_security_list = [self.security]
@@ -1435,8 +1543,8 @@ class Mixed_Traffic(Realm):
             else:
                 band = '_' + self.band
             report = lf_report_pdf.lf_report(_path=self.report_path, _results_dir_name=f"Multicast_Test{band}",
-                                            _output_html=f"multicast_test{band}.html",
-                                            _output_pdf=f"multicast_test{band}.pdf")
+                                             _output_html=f"multicast_test{band}.html",
+                                             _output_pdf=f"multicast_test{band}.pdf")
             kpi_path = self.report_path
             logger.info("Report and kpi_path :{kpi_path}".format(kpi_path=kpi_path))
             kpi_csv = lf_kpi_csv.lf_kpi_csv(_kpi_path=kpi_path,
@@ -1476,7 +1584,8 @@ class Mixed_Traffic(Realm):
                                                                     attenuators=[],
                                                                     atten_vals=[-1],
                                                                     number_template="00",
-                                                                    test_duration=str(self.multicast_test_duration) + "s",
+                                                                    test_duration=str(
+                                                                        self.multicast_test_duration) + "s",
                                                                     polling_interval="5s",
                                                                     lfclient_host=self.host,
                                                                     lfclient_port=self.port,
@@ -1484,7 +1593,8 @@ class Mixed_Traffic(Realm):
                                                                     kpi_csv=kpi_csv,
                                                                     no_cleanup=True,
                                                                     use_existing_station_lists=True,
-                                                                    existing_station_lists=self.user_query[0] if self.real else self.station_lists,
+                                                                    existing_station_lists=self.user_query[
+                                                                        0] if self.real else self.station_lists,
                                                                     wait_for_ip_sec="120s",
                                                                     ap_read=False,
                                                                     ap_module=None,
@@ -1533,10 +1643,10 @@ class Mixed_Traffic(Realm):
                                                                     anqp_3gpp_cell_net_list=[],
                                                                     ieee80211w_list=[],
                                                                     interopt_mode=True,
-                                                                    test_name = self.test_name,
-                                                                    dowebgui = self.dowebgui,
-                                                                    ip = self.host,
-                                                                    result_dir = self.result_dir)
+                                                                    test_name=self.test_name,
+                                                                    dowebgui=self.dowebgui,
+                                                                    ip=self.host,
+                                                                    result_dir=self.result_dir)
             if self.real:
                 if self.user_query[0]:
                     logger.info("No station pre clean up any existing cxs on LANforge")
@@ -1562,7 +1672,7 @@ class Mixed_Traffic(Realm):
             report.start_content_div2()
             # set dut information for reporting
             self.multicast_test_obj.set_dut_info(dut_model_num=dut_model_num, dut_hw_version=dut_hw_version,
-                                                dut_sw_version=dut_sw_version, dut_serial_num=dut_serial_num)
+                                                 dut_sw_version=dut_sw_version, dut_serial_num=dut_serial_num)
             self.multicast_test_obj.set_report_obj(report=report)
             # generate report
             self.multicast_test_obj.generate_report()
@@ -1581,15 +1691,15 @@ class Mixed_Traffic(Realm):
                 logger.info("Full test PASSED, All connections increased rx bytes")
             tos_list = ['VI', 'VO', 'BK', 'BE']
             for tos in tos_list:
-                if(tos != mc_tos):
+                if (tos != mc_tos):
                     self.multicast_test_obj.client_dict_A[tos]['ul_A'] = None
                     self.multicast_test_obj.client_dict_A[tos]['dl_A'] = None
 
                     self.multicast_test_obj.client_dict_B[tos]['ul_B'] = None
                     self.multicast_test_obj.client_dict_B[tos]['dl_B'] = None
-                    
+
             self.multicast_test_status = True
-            if(conn):
+            if (conn):
                 conn.send(
                     [
                         self.multicast_test_obj.client_dict_A,
@@ -1600,7 +1710,7 @@ class Mixed_Traffic(Realm):
         except Exception as e:
             # traceback.print_exc()
             logging.exception(e)
-            if(conn):
+            if (conn):
                 conn.send(
                     [
                         [],
@@ -1609,9 +1719,62 @@ class Mixed_Traffic(Realm):
                     ]
                 )
 
+    def station_info(self):
+        self.sta_info = {
+            'station_list': list(),
+            'radio_list': list(),
+            'ssid_list': list(),
+            'key_list': list(),
+            'band_list': list()
+        }
+        # list?fields=_links,parent+dev,ssid,alias,device,port+type,key/phrase
+        response = super().json_get("/port/list?fields=_links,parent+dev,ssid,alias,device,port+type,key/phrase")
+        if response and 'interfaces' in response:
+            for x in range(len(response['interfaces'])):
+                for interface_name, interface_details in response['interfaces'][x].items():
+                    if isinstance(interface_details, dict):
+                        alias = interface_details.get('alias')
+                        if interface_details.get('port type') == "WIFI-STA" and alias:
+                            self.sta_info['station_list'].append(interface_name)
+                        ssid = interface_details.get('ssid')
+                        if ssid:
+                            self.sta_info['ssid_list'].append(ssid)
+                            if '2G' in ssid or '2g' in ssid:
+                                self.sta_info['band_list'].append('2.4G')
+                                # self.sta_info['band_list'].append('2G')
+                            elif '5G' in ssid or '5g' in ssid:
+                                self.sta_info['band_list'].append('5G')
+                            elif '6G' in ssid or '6g' in ssid:
+                                self.sta_info['band_list'].append('6G')
+                            else:
+                                self.sta_info['band_list'].append('-')
+
+                        key = interface_details.get('key/phrase')
+                        if key:
+                            self.sta_info['key_list'].append(key)
+                        parent_dev = interface_details.get('parent dev')
+                        if parent_dev:
+                            self.sta_info['radio_list'].append(parent_dev)
+                    else:
+                        print(f"Non-dictionary entry: {interface_name}")
+
+        # Convert sets back to lists for final output
+        # self.sta_info['station_list'] = list(self.sta_info['station_list'])
+        # self.sta_info['radio_list'] = list(self.sta_info['radio_list'])
+        # self.sta_info['ssid_list'] = list(self.sta_info['ssid_list'])
+        self.sta_info['band_list'] = list(self.sta_info['band_list'])[0]
+
+        logger.info(self.sta_info['station_list'])
+        logger.info(self.sta_info['radio_list'])
+        logger.info(self.sta_info['ssid_list'])
+        logger.info(self.sta_info['key_list'])
+        logger.info(self.sta_info['band_list'])
+
+        return self.sta_info
+
     def generate_all_report(self):
         logger.info("To generate the Mixed Traffic report with all tests")
-        self.lf_report_mt.set_title("Mixed Traffic Test ({})".format(['Parallel' if self.parallel else 'Serial'][0]))
+        self.lf_report_mt.set_title("Mixed Traffic Test ({})".format('Parallel' if self.parallel else 'Serial'))
         self.lf_report_mt.build_banner()
         virtual_sta_count = len(self.station_list)
         windows_count = self.base_interop_profile.windows
@@ -1621,8 +1784,8 @@ class Mixed_Traffic(Realm):
         test_setup_info = {
             "DUT Model": self.dut_model,
             "DUT Firmware": self.dut_firmware,
-            "SSID": self.ssid,
-            "Security": self.security,
+            "SSID": ','.join(sta for sta in set(self.sta_info['ssid_list'])) if self.cv_scenario else self.ssid,
+            # "Security": self.security,
             "No of Devices": f"{len(self.user_query[0]) if self.real else len(self.station_list)} (Virtual Clients: {virtual_sta_count}, Windows: {windows_count}, Linux: {linux_count}, Mac: {mac_count}, Android: {android_count})",
             "Test Duration (HH:MM:SS)": self.time_formate}
         self.lf_report_mt.set_table_title("Test Setup Information")
@@ -1656,8 +1819,8 @@ class Mixed_Traffic(Realm):
                         self.test_duration1 = self.convert_seconds(self.test_duration)
                     else:
                         self.test_duration1 = self.convert_seconds(self.ping_test_duration)
-                    
-                    if(self.ping_test_status):
+
+                    if (self.ping_test_status):
                         ping_test_status = 'Executed'
                     else:
                         ping_test_status = 'Not Executed'
@@ -1673,8 +1836,8 @@ class Mixed_Traffic(Realm):
                             self.test_duration1 = self.convert_seconds(self.qos_test_duration * len(self.qos_tos_list))
                         else:
                             self.test_duration1 = self.convert_seconds(self.qos_test_duration)
-                    
-                    if(self.qos_test_status):
+
+                    if (self.qos_test_status):
                         qos_test_status = 'Executed'
                     else:
                         qos_test_status = 'Not Executed'
@@ -1685,7 +1848,7 @@ class Mixed_Traffic(Realm):
                     else:
                         self.test_duration1 = self.convert_seconds(self.ftp_test_duration)
 
-                    if(self.ftp_test_status):
+                    if (self.ftp_test_status):
                         ftp_test_status = 'Executed'
                     else:
                         ftp_test_status = 'Not Executed'
@@ -1696,7 +1859,7 @@ class Mixed_Traffic(Realm):
                     else:
                         self.test_duration1 = self.convert_seconds(self.http_test_duration)
 
-                    if(self.http_test_status):
+                    if (self.http_test_status):
                         http_test_status = 'Executed'
                     else:
                         http_test_status = 'Not Executed'
@@ -1707,20 +1870,21 @@ class Mixed_Traffic(Realm):
                     else:
                         self.test_duration1 = self.convert_seconds(self.multicast_test_duration)
 
-                    if(self.multicast_test_status):
+                    if (self.multicast_test_status):
                         multicast_test_status = 'Executed'
                     else:
-                        multicast_test_status = 'Not Executed'  
-                test_duration[test_option] = self.test_duration1 
+                        multicast_test_status = 'Not Executed'
+                test_duration[test_option] = self.test_duration1
 
             df = pd.DataFrame({
-                                "Sno": [1, 2, 3, 4, 5],
-                                "Test Cases": ['Ping Test', 'Quality Of Service(QOS) Test {}'.format(self.qos_tos_list),
-                                                'FTP Test', 'HTTP Test', 'Multicast Test'],
-                                "Test Duration ": [test_duration['1'], test_duration['2'], test_duration['3'],
-                                                    test_duration['4'], test_duration['5']],
-                                "Test Status": [ping_test_status, qos_test_status, ftp_test_status, http_test_status, multicast_test_status]
-                            })
+                "Sno": [1, 2, 3, 4, 5],
+                "Test Cases": ['Ping Test', 'Quality Of Service(QOS) Test {}'.format(self.qos_tos_list),
+                               'FTP Test', 'HTTP Test', 'Multicast Test'],
+                "Test Duration ": [test_duration['1'], test_duration['2'], test_duration['3'],
+                                   test_duration['4'], test_duration['5']],
+                "Test Status": [ping_test_status, qos_test_status, ftp_test_status, http_test_status,
+                                multicast_test_status]
+            })
             self.lf_report_mt.set_table_dataframe(df)
             self.lf_report_mt.build_table()
 
@@ -1737,7 +1901,8 @@ class Mixed_Traffic(Realm):
                 x_fig_size = 15
                 y_fig_size = len(self.ping_test_obj.device_names) * .5 + 4
                 graph = lf_graph.lf_bar_graph_horizontal(
-                    _data_set=[self.ping_test_obj.packets_dropped, self.ping_test_obj.packets_received, self.ping_test_obj.packets_sent],
+                    _data_set=[self.ping_test_obj.packets_dropped, self.ping_test_obj.packets_received,
+                               self.ping_test_obj.packets_sent],
                     _xaxis_name='Packets Count',
                     _yaxis_name='Wireless Clients',
                     _label=['Packets Loss', 'Packets Received', 'Packets Sent'],
@@ -1833,7 +1998,7 @@ class Mixed_Traffic(Realm):
                 qos_test_config_df = {
                     "Protocol": (qos_obj.traffic_type.strip("lf_")).upper(),
                     "Traffic Direction": qos_obj.direction,
-                    "Security": self.security,
+                    # "Security": self.security,
                     "TOS": self.qos_tos_list,
                     "Per TOS Load": self.load}
                 self.lf_report_mt.test_setup_table(test_setup_data=qos_test_config_df, value="Test Setup Information")
@@ -1858,7 +2023,7 @@ class Mixed_Traffic(Realm):
                                                   _graph_image_name=f"tos_",
                                                   _label=["BK", "BE", "VI", "VO"],
                                                   _xaxis_step=1,
-                                                  _graph_title=f"Overall {qos_obj.direction} throughput – BK,BE,VO,VI traffic streams",
+                                                  _graph_title=f"Overall {qos_obj.direction} throughput - BK,BE,VO,VI traffic streams",
                                                   _title_size=16,
                                                   _color=['orange', 'lightcoral', 'steelblue', 'lightgrey'],
                                                   _color_edge='black',
@@ -1891,8 +2056,8 @@ class Mixed_Traffic(Realm):
                 self.lf_report_mt.test_setup_table(test_setup_data=ftp_test_config_df, value="Test Setup Information")
                 self.lf_report_mt.set_obj_html(_obj_title=f"No.of times file {self.ftp_test_obj.direction}",
                                                _obj=f"The below graph represents number of times a file {self.ftp_test_obj.direction} for each client"
-                                                    f" (WiFi) traffic.  X-axis shows “No of times file {self.ftp_test_obj.direction}” and Y-axis shows "
-                                                    f"“Client names“.")
+                                                    f" (WiFi) traffic.  X-axis shows No of times file {self.ftp_test_obj.direction} and Y-axis shows "
+                                                    f"Client names.")
                 self.lf_report_mt.build_objective()
                 sta_list = ""
                 if self.real:
@@ -1929,7 +2094,7 @@ class Mixed_Traffic(Realm):
                 self.lf_report_mt.build_graph()
                 self.lf_report_mt.set_obj_html(_obj_title=f"Average time taken to {self.ftp_test_obj.direction} file ",
                                                _obj=f"The below graph represents average time taken to {self.ftp_test_obj.direction} for each client  "
-                                                    f"(WiFi) traffic.  X-axis shows “Average time taken to {self.ftp_test_obj.direction} a file ” and Y-axis shows “Client names“.")
+                                                    f"(WiFi) traffic.  X-axis shows Average time taken to {self.ftp_test_obj.direction} a file  and Y-axis shows Client names.")
                 self.lf_report_mt.build_objective()
                 graph = lf_graph.lf_bar_graph_horizontal(_data_set=[self.ftp_test_obj.uc_avg],
                                                          _xaxis_name=f"Average time taken to {self.ftp_test_obj.direction} file in ms",
@@ -1967,7 +2132,7 @@ class Mixed_Traffic(Realm):
                     " Mode": self.ftp_test_obj.mode_list,
                     " No of times File downloaded ": self.ftp_test_obj.url_data,
                     " Time Taken to Download file (ms)": self.ftp_test_obj.uc_avg,
-                    " Bytes-rd (Mega Bytes)" : self.ftp_test_obj.bytes_rd}
+                    " Bytes-rd (Mega Bytes)": self.ftp_test_obj.bytes_rd}
                 dataframe1 = pd.DataFrame(dataframe)
                 self.lf_report_mt.set_table_dataframe(dataframe1)
                 self.lf_report_mt.build_table()
@@ -1983,7 +2148,7 @@ class Mixed_Traffic(Realm):
                 self.lf_report_mt.test_setup_table(test_setup_data=http_test_config_df, value="Test Setup Information")
                 self.lf_report_mt.set_obj_html("No of times file Downloads",
                                                "The below graph represents number of times a file downloads for each client"
-                                               ". X- axis shows “No of times file downloads and Y-axis shows "
+                                               ". X- axis shows No of times file downloads and Y-axis shows "
                                                "Client names.")
                 self.lf_report_mt.build_objective()
                 http_graph1 = self.http_obj.graph_2(self.dataset2, lis=self.lis, bands=[self.band])
@@ -1995,7 +2160,7 @@ class Mixed_Traffic(Realm):
                 self.lf_report_mt.build_graph()
                 self.lf_report_mt.set_obj_html("Average time taken to download file ",
                                                "The below graph represents average time taken to download for each client  "
-                                               ".  X- axis shows “Average time taken to download a file ” and Y-axis shows "
+                                               ".  X- axis shows Average time taken to download a file and Y-axis shows "
                                                "Client names.")
                 self.lf_report_mt.build_objective()
                 http_graph2 = self.http_obj.generate_graph(dataset=self.dataset, lis=self.lis, bands=[self.band])
@@ -2015,7 +2180,7 @@ class Mixed_Traffic(Realm):
                     " Mode": self.http_obj.mode_list,
                     " No of times File downloaded ": self.dataset2,
                     " Average time taken to Download file (ms)": self.dataset,
-                    " Bytes-rd (Mega Bytes) " : self.dataset1}
+                    " Bytes-rd (Mega Bytes) ": self.dataset1}
                 dataframe1 = pd.DataFrame(dataframe)
                 self.lf_report_mt.set_table_dataframe(dataframe1)
                 self.lf_report_mt.build_table()
@@ -2038,7 +2203,8 @@ class Mixed_Traffic(Realm):
                                             "Type of Service (TOS)": self.multicast_tos,
                                             "Upstream Port": self.upstream_port,
                                             "Offered Load (Mbps)": int(self.client_dict_A['min_bps_b']) / 1000000}
-                self.lf_report_mt.test_setup_table(test_setup_data=multicast_test_config_df, value="Test Setup Information")
+                self.lf_report_mt.test_setup_table(test_setup_data=multicast_test_config_df,
+                                                   value="Test Setup Information")
                 for tos in tos_list:
                     if self.client_dict_A[tos]["ul_A"] and self.client_dict_A[tos]["dl_A"]:
                         min_bps_a = self.client_dict_A["min_bps_a"]
@@ -2063,7 +2229,7 @@ class Mixed_Traffic(Realm):
                         print(self.client_dict_A[tos]["clients_A"], len(self.client_dict_A[tos]["clients_A"]))
                         print(self.client_dict_A[tos]['labels'], len(self.client_dict_A[tos]['labels']))
                         for client_index in range(len(self.client_dict_A[tos]["clients_A"])):
-                            if(self.client_dict_A[tos]["clients_A"][client_index].startswith('MLT')):
+                            if (self.client_dict_A[tos]["clients_A"][client_index].startswith('MLT')):
                                 total_clients += 1
                                 clients_list.append(self.client_dict_A[tos]["clients_A"][client_index])
                                 client_names.append(self.client_dict_A[tos]['resource_alias_A'][client_index])
@@ -2079,13 +2245,13 @@ class Mixed_Traffic(Realm):
                                 traffic_types.append(self.client_dict_A[tos]['traffic_type_A'][client_index])
                                 traffic_protocols.append(self.client_dict_A[tos]['traffic_protocol_A'][client_index])
                                 per_client_download_rate.append(self.client_dict_A[tos]['dl_A'][client_index])
-                                download_rx_drop_percentages.append(self.client_dict_A[tos]['download_rx_drop_percent_A'][client_index])
-
-
+                                download_rx_drop_percentages.append(
+                                    self.client_dict_A[tos]['download_rx_drop_percent_A'][client_index])
 
                         dataset_list = [client_ul_A_data, client_dl_A_data]
                         bps_to_mbps_converter = 1000000
-                        dataset_list = [[value / bps_to_mbps_converter for value in sublist] for sublist in dataset_list]
+                        dataset_list = [[value / bps_to_mbps_converter for value in sublist] for sublist in
+                                        dataset_list]
                         print("Report Dataset", dataset_list)
                         dataset_length = total_clients
                         x_fig_size = 15
@@ -2094,7 +2260,7 @@ class Mixed_Traffic(Realm):
                         self.lf_report_mt.set_obj_html(
                             _obj_title=f"Individual throughput with intended load {int(min_bps_b) / 1000000} Mbps station for traffic {tos} (WiFi).",
                             _obj=f"The below graph represents individual throughput for {dataset_length} clients running {tos} "
-                                 f"(WiFi) traffic.  Y- axis shows “Client names“ and X-axis shows “Throughput in Mbps”.")
+                                 f"(WiFi) traffic.  Y- axis shows Client names and X-axis shows Throughput in Mbps.")
                         self.lf_report_mt.build_objective()
                         graph = lf_graph.lf_bar_graph_horizontal(_data_set=dataset_list,
                                                                  _xaxis_name="Throughput in Mbps",
@@ -2152,7 +2318,7 @@ def main():
     on both virtual & real clients like Android, Linux, Windows, and IOS connected to the access point.
     This test allows the user to choose multiple types of traffic like client PING test, QOS test, FTP test, HTTP test,
     and multicast test.
-    
+
     The test will create virtual stations, create CX based on the selected test, run traffic and generate a report.
     '''
     parser = argparse.ArgumentParser(
@@ -2192,7 +2358,7 @@ EXAMPLE:
             --pre_cleanup --parallel
 
         # CLI for Mixed Traffic Test: Run with Real Clients on 2.4GHz & 5GHz Bands, Single Iteration per Band.
-        
+
             python3 lf_mixed_traffic.py --mgr 192.168.212.100 
             --twog_ssid NETGEAR-2G --twog_passwd Password@123 --twog_security wpa2 --twog_radio wiphy0 --twog_num_stations 5 
             --fiveg_ssid NETGEAR-5G --fiveg_passwd Password@123 --fiveg_security wpa2 --fiveg_radio wiphy1 --fiveg_num_stations 5 
@@ -2201,9 +2367,9 @@ EXAMPLE:
             --ftp_file_sizes 10MB --http_file_size 5MB --direction Download --mc_tos "BE" --real --qos_serial --mixed_traffic_loop 1
             --ping_test_duration 1m --qos_test_duration 30s --ftp_test_duration 30s --http_test_duration 30s --multicast_test_duration 30s 
             --pre_cleanup
-            
+
         # CLI for Mixed Traffic Test: Run on 2.4GHz & 5GHz Bands Simultaneously with Real Clients in a Single Iteration.
-        
+
             python3 lf_mixed_traffic.py --mgr 192.168.212.100 
             --twog_ssid NETGEAR-2G --twog_passwd Password@123 --twog_security wpa2 --twog_radio wiphy0 --twog_num_stations 5 
             --fiveg_ssid NETGEAR-5G --fiveg_passwd Password@123 --fiveg_security wpa2 --fiveg_radio wiphy1 --fiveg_num_stations 5 
@@ -2212,9 +2378,9 @@ EXAMPLE:
             --ftp_file_sizes 10MB --http_file_size 5MB --direction Download --mc_tos "BE" --real --qos_serial --mixed_traffic_loop 1
             --ping_test_duration 1m --qos_test_duration 30s --ftp_test_duration 30s --http_test_duration 30s --multicast_test_duration 30s 
             --all_bands --pre_cleanup
-            
+
         # CLI for Mixed Traffic Test: Run with Virtual Clients on 2.4GHz & 5GHz Bands, Single Iteration per Band.
-        
+
             python3 lf_mixed_traffic.py --mgr 192.168.212.100 
             --twog_ssid NETGEAR-2G --twog_passwd Password@123 --twog_security wpa2 --twog_radio wiphy0 --twog_num_stations 5 
             --fiveg_ssid NETGEAR-5G --fiveg_passwd Password@123 --fiveg_security wpa2 --fiveg_radio wiphy1 --fiveg_num_stations 5 
@@ -2223,9 +2389,9 @@ EXAMPLE:
             --ftp_file_sizes 10MB --http_file_size 5MB --direction Download --mc_tos "BE" --virtual --qos_serial --mixed_traffic_loop 1
             --ping_test_duration 1m --qos_test_duration 30s --ftp_test_duration 30s --http_test_duration 30s --multicast_test_duration 30s 
             --pre_cleanup
-            
+
         # CLI for Mixed Traffic Test: Run on 2.4GHz & 5GHz Bands Simultaneously with Virtual Clients in a Single Iteration.
-        
+
             python3 lf_mixed_traffic.py --mgr 192.168.212.100 
             --twog_ssid NETGEAR-2G --twog_passwd Password@123 --twog_security wpa2 --twog_radio wiphy0 --twog_num_stations 5 
             --fiveg_ssid NETGEAR-5G --fiveg_passwd Password@123 --fiveg_security wpa2 --fiveg_radio wiphy1 --fiveg_num_stations 5 
@@ -2324,7 +2490,20 @@ INCLUDE_IN_README: False
     optional.add_argument('--dut_model', help='Specify the Dut Name. eg: --dut_model EAP101', default="Test_DUT")
     optional.add_argument('--dut_firmware', help='Specify the dut firmware. eg: --dut_firmware V1.0.0.10',
                           default="NA")
-    optional.add_argument('--mixed_traffic_loop',type=int,help='Specify the number of times mixed traffic test should run',default=1)
+    optional.add_argument('--mixed_traffic_loop', type=int,
+                          help='Specify the number of times mixed traffic test should run', default=1)
+
+    optional.add_argument(
+        '-r', '--radios',
+        action='append',
+        nargs=1,
+        help=(' --radios'
+              ' sixg_radio==<number_of_wiphy sixg_num_stations==<number of stations>'
+              ' sixg_ssid==<ssid> sixg_passwd==<ssid password> sixg_security==<security> '
+              )
+    )
+    optional.add_argument('--scenario', type=str,
+                          help='Provide the Scenario name of the Chamber view for building the station creation scenario.')
 
     # ping test args
     required.add_argument('--target', type=str, help='Target URL for ping test', default='192.168.1.3')
@@ -2332,25 +2511,29 @@ INCLUDE_IN_README: False
                           default='1')
 
     optional.add_argument('--traffic_type', help='Select the Traffic Type [lf_udp, lf_tcp]', default='lf_udp')
-    optional.add_argument('--qos_serial', help='Use --qos_serial to run the qos test one after another.', action='store_true')
+    optional.add_argument('--qos_serial', help='Use --qos_serial to run the qos test one after another.',
+                          action='store_true')
     optional.add_argument('--test_duration', help='--test_duration sets the duration for all the tests', default="")
     optional.add_argument('--ping_test_duration', help='--test_duration sets the duration for ping tests', default="1m")
     optional.add_argument('--qos_test_duration', help='--test_duration sets the duration for qos tests', default="3m")
     optional.add_argument('--ftp_test_duration', help='--test_duration sets the duration for ftp tests', default="3m")
     optional.add_argument('--http_test_duration', help='--test_duration sets the duration for http tests', default="3m")
-    optional.add_argument('--multicast_test_duration', help='--test_duration sets the duration for multicast tests', default="5m")
+    optional.add_argument('--multicast_test_duration', help='--test_duration sets the duration for multicast tests',
+                          default="5m")
     # qos args
-    optional.add_argument('--tos', help='Enter the tos. Example1 : "BK,BE,VI,VO" , Example2 : "BK,VO", Example3 : "VI" ', default="VO")
+    optional.add_argument('--tos',
+                          help='Enter the tos. Example1 : "BK,BE,VI,VO" , Example2 : "BK,VO", Example3 : "VI" ',
+                          default="VO")
     optional.add_argument('--side_a_min', help='Endpoint-a Min Cx Rate', default=6200000)
     optional.add_argument('--side_a_max', help='Endpoint-a Max CX Rate', default=0)
     optional.add_argument('--side_b_min', help='Endpoint-b Min CX Rate', default=6200000)
     optional.add_argument('--side_b_max', help='Endpoint-b Max CX Rate', default=0)
-    #ftp test args
+    # ftp test args
     optional.add_argument('--band', nargs="+", help='select bands for virtual clients Example : "5G","2.4G" ',
                           default=["5G"])
     optional.add_argument('--use_default_config',
-                        action='store_true',
-                        help='specify this flag if wanted to proceed with existing Wi-Fi configuration of the devices')
+                          action='store_true',
+                          help='specify this flag if wanted to proceed with existing Wi-Fi configuration of the devices')
     required.add_argument('--direction', nargs="+", help='Enter the traffic direction. Example : "Download","Upload"',
                           default=["Download", "Upload"])
     required.add_argument('--ftp_file_sizes', nargs="+", help='File Size Example : "1000MB"',
@@ -2379,11 +2562,11 @@ INCLUDE_IN_README: False
     parser.add_argument('--pre_cleanup', help='Use this if you want to clean Generic, Layer-3, L3 Endps &'
                                               ' Layer 4-7 tabs data', default=None, action="store_true")
 
-    parser.add_argument('--all_bands', help='to run the tests with respective bands',default=None,
+    parser.add_argument('--all_bands', help='to run the tests with respective bands', default=None,
                         action="store_true")
-    
+
     # For webgui execution
-    parser.add_argument('--dowebgui', help='to run the tests with webgui',default=None,
+    parser.add_argument('--dowebgui', help='to run the tests with webgui', default=None,
                         action="store_true")
     parser.add_argument('--device_list', help='device list recieved from webgui tos', type=str, default="")
     parser.add_argument('--result_dir', help='result_dir for real time data for webui', type=str, default="")
@@ -2393,6 +2576,8 @@ INCLUDE_IN_README: False
     optional.add_argument("--lf_logger_config_json",
                           help="--lf_logger_config_json <json file> , json configuration of logger")
 
+    # argument to make clients down for some time
+    parser.add_argument("--clients_down_time", help='Time interval to make clients down', type=int, default=None)
     parser.add_argument('--help_summary', help='Show summary of what this script does', default=None,
                         action="store_true")
 
@@ -2415,80 +2600,127 @@ INCLUDE_IN_README: False
             "--mc_tos <input> should not contain single value not multiple values. eg : --mc_tos \"BE"))
         exit(0)
 
-    radio,ssid,security,password = [],[],[],[]
+    if args.radios:
+        radios = args.radios
+    else:
+        radios = None
+
+    radio, ssid, security, password = [], [], [], []
     Bands = args.band[0].split(',')
+    sixg_radio_name_list, sixg_number_of_stations_per_radio_list, sixg_ssid_list, sixg_ssid_password_list, sixg_ssid_security_list = [], [], [], [], []
+    if radios is not None and '6G' in Bands:
+        logger.info("radios {}".format(radios))
+        for radio_ in radios:
+            sixg_radio_keys = ['sixg_radio', 'sixg_security', 'sixg_ssid', 'sixg_passwd', 'sixg_num_stations']
+            logger.info("radio_dict before format {}".format(radio_))
+            radio_info_dict = dict(
+                map(
+                    lambda x: x.split('=='),
+                    str(radio_).replace(
+                        '"',
+                        '').replace(
+                        '[',
+                        '').replace(
+                        ']',
+                        '').replace(
+                        "'",
+                        "").replace(
+                        ",",
+                        " ").split()))
+            # radio_info_dict = dict(map(lambda x: x.split('=='), str(radio_).replace('"', '').split()))
+            logger.debug("radio_dict {}".format(radio_info_dict))
+            logger.info(getattr(args, 'sixg_ssid'))
+            for key in sixg_radio_keys:
+                if key not in radio_info_dict:
+                    if hasattr(args, f'{key}'):
+                        radio_info_dict[f'{key}'] = getattr(args, f'{key}')
+                    else:
+                        logger.critical(
+                            "missing argument, for the {}, all of the following need to be present {} ".format(
+                                key, radio_info_dict))
+                        exit(1)
+            logger.info("radio_dict after format {}".format(radio_info_dict))
+            sixg_radio_name_list.append(radio_info_dict['sixg_radio'])
+            sixg_number_of_stations_per_radio_list.append(int(radio_info_dict['sixg_num_stations']))
+            sixg_ssid_list.append(radio_info_dict.get('sixg_ssid'))
+            sixg_ssid_password_list.append(radio_info_dict.get('sixg_passwd'))
+            sixg_ssid_security_list.append(radio_info_dict.get('sixg_security'))
 
     # checking all required arguments for wifi config
-    if(args.use_default_config == False):
-        if('2.4G' in Bands):
-            if(args.twog_ssid is None):
-                print('--twog_ssid is required')
-                exit(1)
-            if(args.twog_passwd is None):
-                print('--twog_passwd is required')
-                exit(1)
-            if(args.twog_security is None):
-                print('--twog_security is required')
-                exit(1)
-            # if(args.virtual):
-            #     if(args.twog_radio is None):
-            #         print('--twog_radio is required')
-            #         exit(1)
-            #     if(args.twog_num_stations is None):
-            #         print('--twog_num_stations is required')
-            #         exit(1)
-        if('5G' in Bands):
-            if(args.fiveg_ssid is None):
-                print('--fiveg_ssid is required')
-                exit(1)
-            if(args.fiveg_passwd is None):
-                print('--fiveg_passwd is required')
-                exit(1)
-            if(args.fiveg_security is None):
-                print('--fiveg_security is required')
-                exit(1)
-            # if(args.virtual):
-            #     if(args.fiveg_radio is None):
-            #         print('--fiveg_radio is required')
-            #         exit(1)
-            #     if(args.fiveg_num_stations is None):
-            #         print('--fiveg_num_stations is required')
-            #         exit(1)
-        if('6G' in Bands):
-            if(args.sixg_ssid is None):
-                print('--sixg_ssid is required')
-                exit(1)
-            if(args.sixg_passwd is None):
-                print('--sixg_passwd is required')
-                exit(1)
-            if(args.sixg_security is None):
-                print('--sixg_security is required')
-                exit(1)
-            # if(args.virtual):
-            #     if(args.sixg_radio is None):
-            #         print('--sixg_radio is required')
-            #         exit(1)
-            #     if(args.sixg_num_stations is None):
-            #         print('--sixg_num_stations is required')
-            #         exit(1)
+    if (not args.scenario):
+        if (args.use_default_config == False):
+            if ('2.4G' in Bands):
+                if (args.twog_ssid is None):
+                    print('--twog_ssid is required')
+                    exit(1)
+                if (args.twog_passwd is None):
+                    print('--twog_passwd is required')
+                    exit(1)
+                if (args.twog_security is None):
+                    print('--twog_security is required')
+                    exit(1)
+                # if(args.virtual):
+                #     if(args.twog_radio is None):
+                #         print('--twog_radio is required')
+                #         exit(1)
+                #     if(args.twog_num_stations is None):
+                #         print('--twog_num_stations is required')
+                #         exit(1)
+            if ('5G' in Bands):
+                if (args.fiveg_ssid is None):
+                    print('--fiveg_ssid is required')
+                    exit(1)
+                if (args.fiveg_passwd is None):
+                    print('--fiveg_passwd is required')
+                    exit(1)
+                if (args.fiveg_security is None):
+                    print('--fiveg_security is required')
+                    exit(1)
+                # if(args.virtual):
+                #     if(args.fiveg_radio is None):
+                #         print('--fiveg_radio is required')
+                #         exit(1)
+                #     if(args.fiveg_num_stations is None):
+                #         print('--fiveg_num_stations is required')
+                #         exit(1)
+            if '6G' in Bands:
+                if not args.radios:
+                    if (args.sixg_ssid is None):
+                        print('--sixg_ssid is required')
+                        exit(1)
+                    if (args.sixg_passwd is None):
+                        print('--sixg_passwd is required')
+                        exit(1)
+                    if (args.sixg_security is None):
+                        print('--sixg_security is required')
+                        exit(1)
+                    # if(args.virtual):
+                #     if(args.sixg_radio is None):
+                #         print('--sixg_radio is required')
+                #         exit(1)
+                #     if(args.sixg_num_stations is None):
+                #         print('--sixg_num_stations is required')
+                #         exit(1)
     configure = not args.use_default_config
     # Virtual stations setting up the start_id, num_sta, sta_list
     # num_sta = args.num_stations
     station_list = []
-    
-    #for creating directory and placing reports
+
+    # for creating directory and placing reports
     parent_dir = os.getcwd()
     directory = datetime.datetime.now().strftime("%b %d %H:%M:%S") + str(' mixed_traffic_test')
-    overall_csv=[]
+    overall_csv = []
     overall_status = {}
     if args.dowebgui:
-        overall_path = os.path.join(args.result_dir,directory)
-        overall_status = {"ping":"notstarted","qos":"notstarted","ftp":"notstarted","http":"notstarted","mc":"notstarted","time":datetime.datetime.now().strftime("%Y %d %H:%M:%S"),"status":"running"}
+        overall_path = os.path.join(args.result_dir, directory)
+        overall_status = {"ping": "notstarted", "qos": "notstarted", "ftp": "notstarted", "http": "notstarted",
+                          "mc": "notstarted", "time": datetime.datetime.now().strftime("%Y %d %H:%M:%S"),
+                          "status": "running"}
         overall_csv.append(overall_status.copy())
         df1 = pd.DataFrame(overall_csv)
         df1.to_csv('{}/overall_status.csv'.format(args.result_dir), index=False)
     else:
-        overall_path = os.path.join(parent_dir,directory)
+        overall_path = os.path.join(parent_dir, directory)
     os.mkdir(overall_path)
     mixed_obj = Mixed_Traffic(host=args.mgr,
                               port=args.mgr_port,
@@ -2540,24 +2772,78 @@ INCLUDE_IN_README: False
                               multicast_test_duration=args.multicast_test_duration,
                               configure=configure,
                               parallel=args.parallel,
-                              
+                              cv_scenario=args.scenario,
                               target=args.target,
                               multicast_endp_types=args.mc_traffic_type,
                               multicast_tos=args.mc_tos,
-                              
-                            #  for Webgui 
+
+                              #  for Webgui
                               dowebgui=args.dowebgui,
                               device_list=args.device_list,
                               test_name=args.test_name,
                               result_dir=args.result_dir,
                               # path=path
+
                               )
     # pre-cleaning & creating / selecting clients for both real and virtual
     twog_selected_devices, fiveg_selected_devices, sixg_selected_devices = None, None, None
     if args.pre_cleanup:
         mixed_obj.pre_cleanup()
+    if args.scenario:
+        # Load Scenario and Build
+        cv_test_obj = cv_test_manager.cv_test(lfclient_host=args.mgr)
+        cv_test_obj.apply_cv_scenario(args.scenario)
+        cv_test_obj.build_cv_scenario()
+        cv_test_obj.create_test(test_name='Scenario Test', instance=args.scenario, load_old_cfg=False)
+        logger.info("Stations Initiated and waits until adminup and gets IP")
+        time.sleep(15)
+        mixed_obj.station_info()
+        mixed_obj.station_list = mixed_obj.sta_info['station_list']
+        mixed_obj.station_profile.station_names = mixed_obj.sta_info['station_list']
+
+        # To Disable "Disable MLO" Flags of stations
+        #for (stat, rad, ssids, pass_key) in zip(mixed_obj.sta_info['station_list'], mixed_obj.sta_info['radio_list'],
+        #                                        mixed_obj.sta_info['ssid_list'], mixed_obj.sta_info['key_list']):
+        #    add_sta_data = {
+        #        'radio': rad,
+        #        'sta_name': stat.split('.')[2],
+        #        'ssid': ssids,
+        #        'key': pass_key,
+        #        'mode': 0,
+        #        #'flags': 1099511627776,
+        #        'ieee80211w': 1,
+        #        'shelf': stat.split('.')[0],
+        #        'resource': stat.split('.')[1],
+        #        # 'mac': "xx:xx:xx:**:**xx"
+        ##    }
+        #    response = mixed_obj.json_post("cli-json/add_sta", add_sta_data, debug_=mixed_obj.debug)
+        #    # response = requests.post(f'http://{mixed_obj.host}:8080/cli-json/add_sta', json=data, auth=('lanforge','lanforge'),timeout=5)
+        #    set_wifi_extra_data = {
+        #    'shelf': stat.split('.')[0],
+        #    'resource': stat.split('.')[1],
+        #    'port': stat.split('.')[2],
+        #    'key_mgmt': "SAE-EXT-KEY",
+        #    'pairwise': "GCMP-256",
+        #    'group'  : "GCMP-256",
+        #    }
+        #    response = mixed_obj.json_post("cli-json/set_wifi_extra",set_wifi_extra_data,debug_=mixed_obj.debug)
+        #    time.sleep(3)
+        #    logger.info(response)
+        # TO Admin up the stations
+        for sta in mixed_obj.station_list:
+            mixed_obj.admin_up(sta)
+
+        # Wait for IP and then start Tests
+        if Realm.wait_for_ip(self=mixed_obj, station_list=mixed_obj.station_list, timeout_sec=-1):
+            mixed_obj._pass("All stations got IPs", print_=True)
+            mixed_obj._pass("Station build finished", print_=True)
+        else:
+            mixed_obj._fail("Stations failed to get IPs", print_=True)
+            mixed_obj._fail("FAIL: Station build failed", print_=True)
+            logger.info("Please re-check the configuration applied")
+
     if args.real:
-        if(configure):
+        if configure:
             selected_serial_list = mixed_obj.selecting_devices_from_available()
             if selected_serial_list:
                 twog_selected_devices = selected_serial_list[0] if len(selected_serial_list) > 0 else None
@@ -2568,208 +2854,225 @@ INCLUDE_IN_README: False
                 set_5g = set(fiveg_selected_devices)
                 set_6g = set(sixg_selected_devices)
                 if set_2g & set_5g or set_2g & set_6g or set_5g & set_6g:
-                    print("Please Check your selected clients...! Dont select the same clients, if your using --all_bands argument")
+                    print(
+                        "Please Check your selected clients...! Dont select the same clients, if your using --all_bands argument")
                     exit(0)
                 else:
                     print("No Duplicates Devices Present.")
 
     # iteration-based logic
-    for times in range(1,args.mixed_traffic_loop+1):
-        multiple_directory = datetime.datetime.now().strftime("%b %d %H:%M:%S") + str('Mixed_Traffic_Test_Iteration_') + str(times)
-        multiple_directory_path = os.path.join(overall_path,multiple_directory)
+    for times in range(1, args.mixed_traffic_loop + 1):
+        multiple_directory = datetime.datetime.now().strftime("%b %d %H:%M:%S") + str(
+            'Mixed_Traffic_Test_Iteration_') + str(times)
+        multiple_directory_path = os.path.join(overall_path, multiple_directory)
         os.mkdir(multiple_directory_path)
-        if(not configure):
+        if not configure:
             args.all_bands = True
         if not args.all_bands:
-            for band in Bands:  # band-based logic
-                mixed_obj.band = band
-                path = os.path.join(parent_dir, directory)
-                if band == "2.4G":
-                    security = args.twog_security
-                    ssid = args.twog_ssid
-                    password = args.twog_passwd
-                    radio = args.twog_radio
-                    directory = str(' 2.4GHz')
-                    if args.real:
-                        mixed_obj.real_client_wifi_config(selected_serial_list=twog_selected_devices)
-                    elif args.virtual:
-                        mixed_obj.virtual_client_creation(ssid=ssid, password=password, security=security, band=band,
-                                                          radio=radio, num_stations=args.twog_num_stations,
-                                                          start_id=args.twog_start_id)
-                elif band == "5G":
-                    security = args.fiveg_security
-                    ssid = args.fiveg_ssid
-                    password = args.fiveg_passwd
-                    radio = args.fiveg_radio
-                    directory = str(' 5GHz')
-                    if args.real:
-                        mixed_obj.real_client_wifi_config(selected_serial_list=fiveg_selected_devices)
-                    elif args.virtual:
-                        mixed_obj.virtual_client_creation(ssid=ssid, password=password, security=security, band=band,
-                                                          radio=radio, num_stations=args.fiveg_num_stations,
-                                                          start_id=args.fiveg_start_id)
-                elif band == "6G":
-                    security = args.sixg_security
-                    ssid = args.sixg_ssid
-                    password = args.sixg_passwd
-                    radio = args.sixg_radio
-                    directory = str(' 6GHz')
-                    if args.real:
-                        mixed_obj.real_client_wifi_config(selected_serial_list=sixg_selected_devices)
-                    elif args.virtual:
-                        mixed_obj.virtual_client_creation(ssid=ssid, password=password, security=security, band=band,
-                                                          radio=radio, num_stations=args.sixg_num_stations,
-                                                          start_id=args.sixg_start_id)
-                path = os.path.join(multiple_directory_path, directory)
-                os.mkdir(path)
-                mixed_obj.report_obj(band=band, path=path)  # setting a report object
-                # updating ssid, security's for report
-                mixed_obj.ssid = ssid
-                mixed_obj.security = security
+            if (not args.scenario):
+                for band in Bands:  # band-based logic
+                    mixed_obj.band = band
+                    path = os.path.join(parent_dir, directory)
+                    if band == "2.4G":
+                        security = args.twog_security
+                        ssid = args.twog_ssid
+                        password = args.twog_passwd
+                        radio = args.twog_radio
+                        directory = str(' 2.4GHz')
+                        if args.real:
+                            mixed_obj.real_client_wifi_config(selected_serial_list=twog_selected_devices)
+                        elif args.virtual:
+                            mixed_obj.virtual_client_creation(ssid=ssid, password=password, security=security,
+                                                              band=band,
+                                                              radio=radio, num_stations=args.twog_num_stations,
+                                                              start_id=args.twog_start_id)
+                    elif band == "5G":
+                        security = args.fiveg_security
+                        ssid = args.fiveg_ssid
+                        password = args.fiveg_passwd
+                        radio = args.fiveg_radio
+                        directory = str(' 5GHz')
+                        if args.real:
+                            mixed_obj.real_client_wifi_config(selected_serial_list=fiveg_selected_devices)
+                        elif args.virtual:
+                            mixed_obj.virtual_client_creation(ssid=ssid, password=password, security=security,
+                                                              band=band,
+                                                              radio=radio, num_stations=args.fiveg_num_stations,
+                                                              start_id=args.fiveg_start_id)
+                    elif band == "6G":
+                        directory = str('6GHz')
+                        for (radio, num_sta, ssid, password, security) in zip(sixg_radio_name_list,
+                                                                              sixg_number_of_stations_per_radio_list,
+                                                                              sixg_ssid_list, sixg_ssid_password_list,
+                                                                              sixg_ssid_security_list):
+                            if args.real:
+                                mixed_obj.real_client_wifi_config(selected_serial_list=sixg_selected_devices)
+                            elif args.virtual:
+                                mixed_obj.virtual_client_creation(ssid=ssid, password=password, security=security,
+                                                                  band=band,
+                                                                  radio=radio, num_stations=num_sta,
+                                                                  start_id=mixed_obj.start_id_6g)
+                            mixed_obj.start_id_6g = int(mixed_obj.start_id_6g) + num_sta
+                        mixed_obj.station_profile.station_names = mixed_obj.station_list
 
-                logger.info(f"Selected Tests List: {args.tests}")
-                if args.tests:
-                    if args.parallel:
-                        if "1" in args.tests:
-                            t1_parent, t1_child = Pipe()
-                            t1 = Process(target=mixed_obj.ping_test, 
-                                        kwargs={
-                                            'ssid': ssid,
-                                            'password': password,
-                                            'security': security,
-                                            'target': args.target,
-                                            'interval': args.ping_interval,
-                                            'conn': t1_child
-                                        }
-                                    )
-                            t1.start()
-                            # mixed_obj.ping_test(ssid=ssid, password=password, security=security, target=args.target,
-                            #                     interval=args.ping_interval)
-                        if "2" in args.tests:
-                            t2_parent, t2_child = Pipe()
-                            t2 = Process(target=mixed_obj.qos_test, 
-                                        kwargs={
-                                            'ssid': ssid,
-                                            'password': password,
-                                            'security': security,
-                                            'ap_name': args.dut_model,
-                                            'upstream': args.upstream_port,
-                                            'tos': args.tos,
-                                            'traffic_type': args.traffic_type,
-                                            'side_a_min': args.side_a_min,
-                                            'side_b_min': args.side_b_min,
-                                            'side_a_max': args.side_a_max,
-                                            'side_b_max': args.side_b_min,
-                                            'conn': t2_child
-                                        }
-                                    )
-                            t2.start()
-                            # mixed_obj.qos_test(ssid=ssid, password=password, security=security, ap_name=args.dut_model,
-                            #                 upstream=args.upstream_port, tos=args.tos, traffic_type=args.traffic_type,
-                            #                 side_a_min=args.side_a_min, side_b_min=args.side_b_min,
-                            #                 side_a_max=args.side_a_max, side_b_max=args.side_b_min)
-                        if "3" in args.tests:
-                            t3_parent, t3_child = Pipe()
-                            t3 = Process(target=mixed_obj.ftp_test, 
-                                        kwargs={
-                                            'ssid': ssid,
-                                            'password': password,
-                                            'security': security,
-                                            'bands': band,
-                                            'directions': args.direction,
-                                            'file_sizes': args.ftp_file_sizes,
-                                            'conn': t3_child
-                                        }
-                                    )
-                            t3.start()
-                            # mixed_obj.ftp_test(ssid=ssid, password=password, security=security, bands=band,
-                            #                 directions=args.direction, file_sizes=args.ftp_file_sizes)
-                        if "4" in args.tests:
-                            t4_parent, t4_child = Pipe()
-                            t4 = Process(target=mixed_obj.http_test, 
-                                        kwargs={
-                                            'ssid': ssid, 
-                                            'password': password, 
-                                            'security': security,
-                                            'http_file_size': args.http_file_size, 
-                                            'target_per_ten': args.target_per_ten,
-                                            'conn': t4_child
-                                        }
-                                    )
-                            t4.start()
-                            # mixed_obj.http_test(ssid=ssid, password=password, security=security,
-                            #                     http_file_size=args.http_file_size, target_per_ten=args.target_per_ten)
-                        if "5" in args.tests:
-                            t5_parent, t5_child = Pipe()
-                            t5 = Process(target=mixed_obj.multicast_test, 
-                                        kwargs={
-                                            'endp_types': args.mc_traffic_type, 
-                                            'mc_tos': args.mc_tos,
-                                            'side_a_min': args.side_a_min_bps, 
-                                            'side_b_min': args.side_b_min_bps,
-                                            'side_a_pdu': args.side_a_min_pdu, 
-                                            'side_b_pdu': args.side_b_min_pdu,
-                                            'conn': t5_child
-                                        }
-                                    )
-                            t5.start()
-                            # mixed_obj.multicast_test(endp_types=args.mc_traffic_type, mc_tos=args.mc_tos,
-                            #                         side_a_min=args.side_a_min_bps, side_b_min=args.side_b_min_bps,
-                            #                         side_a_pdu=args.side_a_min_pdu, side_b_pdu=args.side_b_min_pdu)
+            path = os.path.join(multiple_directory_path, directory)
+            os.mkdir(path)
+            if args.scenario:
+                band = None
+            mixed_obj.report_obj(band=band, path=path)  # setting a report object
+            # updating ssid, security's for report
+            mixed_obj.ssid = ssid
+            mixed_obj.security = security
 
-                        if "1" in args.tests:
-                            mixed_obj.ping_test_obj, mixed_obj.ping_test_status = t1_parent.recv()
-                            t1.join()
-                        if "2" in args.tests:
+            logger.info(f"Selected Tests List: {args.tests}")
+            if args.tests:
+                if args.parallel:
+                    if "1" in args.tests:
+                        t1_parent, t1_child = Pipe()
+                        t1 = Process(target=mixed_obj.ping_test,
+                                     kwargs={
+                                         'ssid': ssid,
+                                         'password': password,
+                                         'security': security,
+                                         'target': args.target,
+                                         'interval': args.ping_interval,
+                                         'conn': t1_child
+                                     }
+                                     )
+                        t1.start()
+                        # mixed_obj.ping_test(ssid=ssid, password=password, security=security, target=args.target,
+                        #                     interval=args.ping_interval)
+                    if "2" in args.tests:
+                        t2_parent, t2_child = Pipe()
+                        t2 = Process(target=mixed_obj.qos_test,
+                                     kwargs={
+                                         'ssid': ssid,
+                                         'password': password,
+                                         'security': security,
+                                         'ap_name': args.dut_model,
+                                         'upstream': args.upstream_port,
+                                         'tos': args.tos,
+                                         'traffic_type': args.traffic_type,
+                                         'side_a_min': args.side_a_min,
+                                         'side_b_min': args.side_b_min,
+                                         'side_a_max': args.side_a_max,
+                                         'side_b_max': args.side_b_min,
+                                         'conn': t2_child
+                                     }
+                                     )
+                        t2.start()
+                        # mixed_obj.qos_test(ssid=ssid, password=password, security=security, ap_name=args.dut_model,
+                        #                 upstream=args.upstream_port, tos=args.tos, traffic_type=args.traffic_type,
+                        #                 side_a_min=args.side_a_min, side_b_min=args.side_b_min,
+                        #                 side_a_max=args.side_a_max, side_b_max=args.side_b_min)
+                    if "3" in args.tests:
+                        t3_parent, t3_child = Pipe()
+                        t3 = Process(target=mixed_obj.ftp_test,
+                                     kwargs={
+                                         'ssid': ssid,
+                                         'password': password,
+                                         'security': security,
+                                         'bands': mixed_obj.sta_info['band_list'] if args.scenario else band,
+                                         'directions': args.direction,
+                                         'file_sizes': args.ftp_file_sizes,
+                                         'conn': t3_child
+                                     }
+                                     )
+                        t3.start()
+                        # mixed_obj.ftp_test(ssid=ssid, password=password, security=security, bands=band,
+                        #                 directions=args.direction, file_sizes=args.ftp_file_sizes)
+                    if "4" in args.tests:
+                        t4_parent, t4_child = Pipe()
+                        t4 = Process(target=mixed_obj.http_test,
+                                     kwargs={
+                                         'ssid': ssid,
+                                         'password': password,
+                                         'security': security,
+                                         'http_file_size': args.http_file_size,
+                                         'target_per_ten': args.target_per_ten,
+                                         'conn': t4_child
+                                     }
+                                     )
+                        t4.start()
+                        # mixed_obj.http_test(ssid=ssid, password=password, security=security,
+                        #                     http_file_size=args.http_file_size, target_per_ten=args.target_per_ten)
+                    if "5" in args.tests:
+                        t5_parent, t5_child = Pipe()
+                        t5 = Process(target=mixed_obj.multicast_test,
+                                     kwargs={
+                                         'endp_types': args.mc_traffic_type,
+                                         'mc_tos': args.mc_tos,
+                                         'side_a_min': args.side_a_min_bps,
+                                         'side_b_min': args.side_b_min_bps,
+                                         'side_a_pdu': args.side_a_min_pdu,
+                                         'side_b_pdu': args.side_b_min_pdu,
+                                         'conn': t5_child
+                                     }
+                                     )
+                        t5.start()
+                        # mixed_obj.multicast_test(endp_types=args.mc_traffic_type, mc_tos=args.mc_tos,
+                        #                         side_a_min=args.side_a_min_bps, side_b_min=args.side_b_min_bps,
+                        #                         side_a_pdu=args.side_a_min_pdu, side_b_pdu=args.side_b_min_pdu)
+
+                    if "1" in args.tests:
+                        mixed_obj.ping_test_obj, mixed_obj.ping_test_status = t1_parent.recv()
+                        t1.join()
+                    if "2" in args.tests:
+                        if args.parallel:
+                            mixed_obj.throughput_qos_obj, mixed_obj.data_set, mixed_obj.load, mixed_obj.res, mixed_obj.qos_test_status = t2_parent.recv()
+                        else:
                             mixed_obj.qos_test_obj, mixed_obj.data_set, mixed_obj.load, mixed_obj.res, mixed_obj.qos_test_status = t2_parent.recv()
-                            t2.join()
-                        if "3" in args.tests:
-                            mixed_obj.ftp_test_obj, mixed_obj.ftp_test_status = t3_parent.recv()
-                            t3.join()
-                        if "4" in args.tests:
-                            mixed_obj.http_obj, mixed_obj.dataset, mixed_obj.dataset1, mixed_obj.dataset2, mixed_obj.bytes_rd, mixed_obj.lis, mixed_obj.http_test_status = t4_parent.recv()
-                            t4.join()
-                        if "5" in args.tests:
-                            class temp_multi_cast_obj():
-                                def __init__(self, client_dict_A, client_dict_B):
-                                    self.client_dict_A = client_dict_A
-                                    self.client_dict_B = client_dict_B
+                        t2.join()
+                    if "3" in args.tests:
+                        mixed_obj.ftp_test_obj, mixed_obj.ftp_test_status = t3_parent.recv()
+                        t3.join()
+                    if "4" in args.tests:
+                        mixed_obj.http_obj, mixed_obj.dataset, mixed_obj.dataset1, mixed_obj.dataset2, mixed_obj.bytes_rd, mixed_obj.lis, mixed_obj.http_test_status = t4_parent.recv()
+                        t4.join()
+                    if "5" in args.tests:
+                        class temp_multi_cast_obj():
+                            def __init__(self, client_dict_A, client_dict_B):
+                                self.client_dict_A = client_dict_A
+                                self.client_dict_B = client_dict_B
 
-                            client_dict_A, client_dict_B, mixed_obj.multicast_test_status = t5_parent.recv()
-                            mixed_obj.multicast_test_obj = temp_multi_cast_obj(client_dict_A, client_dict_B)
-                            t5.join()
-                    else:
-                        if "1" in args.tests:
-                            mixed_obj.ping_test(ssid=ssid, password=password, security=security, target=args.target,
-                                                interval=args.ping_interval)
-                        if "2" in args.tests:
-                            mixed_obj.qos_test(ssid=ssid, password=password, security=security, ap_name=args.dut_model,
-                                            upstream=args.upstream_port, tos=args.tos, traffic_type=args.traffic_type,
-                                            side_a_min=args.side_a_min, side_b_min=args.side_b_min,
-                                            side_a_max=args.side_a_max, side_b_max=args.side_b_min)
-                        if "3" in args.tests:
-                            mixed_obj.ftp_test(ssid=ssid, password=password, security=security, bands=band,
-                                            directions=args.direction, file_sizes=args.ftp_file_sizes)
-                        if "4" in args.tests:
-                            mixed_obj.http_test(ssid=ssid, password=password, security=security,
-                                                http_file_size=args.http_file_size, target_per_ten=args.target_per_ten)
-                        if "5" in args.tests:
-                            mixed_obj.multicast_test(endp_types=args.mc_traffic_type, mc_tos=args.mc_tos,
-                                                    side_a_min=args.side_a_min_bps, side_b_min=args.side_b_min_bps,
-                                                    side_a_pdu=args.side_a_min_pdu, side_b_pdu=args.side_b_min_pdu)
-                    # generating overall report
-                    mixed_obj.generate_all_report()
+                        client_dict_A, client_dict_B, mixed_obj.multicast_test_status = t5_parent.recv()
+                        mixed_obj.multicast_test_obj = temp_multi_cast_obj(client_dict_A, client_dict_B)
+                        t5.join()
                 else:
-                    print("No Test Selected. Please select the Tests.")
-                    exit(0)
+                    if "1" in args.tests:
+                        mixed_obj.ping_test(ssid=ssid, password=password, security=security, target=args.target,
+                                            interval=args.ping_interval)
+                    if "2" in args.tests:
+                        mixed_obj.qos_test(ssid=ssid, password=password, security=security, ap_name=args.dut_model,
+                                           upstream=args.upstream_port, tos=args.tos, traffic_type=args.traffic_type,
+                                           side_a_min=args.side_a_min, side_b_min=args.side_b_min,
+                                           side_a_max=args.side_a_max, side_b_max=args.side_b_min)
+                    if "3" in args.tests:
+                        mixed_obj.ftp_test(ssid=ssid, password=password, security=security,
+                                           bands=mixed_obj.sta_info['band_list'] if args.scenario else band,
+                                           directions=args.direction, file_sizes=args.ftp_file_sizes)
+                    if "4" in args.tests:
+                        mixed_obj.http_test(ssid=ssid, password=password, security=security,
+                                            http_file_size=args.http_file_size, target_per_ten=args.target_per_ten)
+                    if "5" in args.tests:
+                        mixed_obj.multicast_test(endp_types=args.mc_traffic_type, mc_tos=args.mc_tos,
+                                                 side_a_min=args.side_a_min_bps, side_b_min=args.side_b_min_bps,
+                                                 side_a_pdu=args.side_a_min_pdu, side_b_pdu=args.side_b_min_pdu)
+                # generating overall report
+                # if not args.clients_down_time:
+                mixed_obj.generate_all_report()
+            else:
+                print("No Test Selected. Please select the Tests.")
+                exit(0)
         else:
             # the tests will run irrespective to bands
-            mixed_obj.band = Bands[0]   # since all the test are band specific, passing band first item in the list #Todo: need to modify this , for now hardcoded
-            mixed_obj.radio = args.twog_radio   # taking a first twog-radio in a list as a default radio #Todo: need to modify this , for now hardcoded
+            mixed_obj.band = Bands[
+                0]  # since all the test are band specific, passing band first item in the list #Todo: need to modify this , for now hardcoded
+            mixed_obj.radio = args.twog_radio  # taking a first twog-radio in a list as a default radio #Todo: need to modify this , for now hardcoded
             path = os.path.join(multiple_directory_path)
             mixed_obj.report_obj(band=None, path=path)  # setting a report object
             if args.real:
-                if(configure):
+                if (configure):
                     selected_serial_list = [twog_selected_devices, fiveg_selected_devices, sixg_selected_devices]
                     logger.info(f"All Selected Clients: {selected_serial_list}")
                     for client_list in selected_serial_list:
@@ -2780,74 +3083,79 @@ INCLUDE_IN_README: False
                     mixed_obj.select_real_devices(real_devices=mixed_obj.base_interop_profile)
 
             elif args.virtual:
-                sta_list_2g, sta_list_5g, sta_list_6g = [], [], []
-                if args.twog_num_stations:
-                    sta_list_2g = mixed_obj.virtual_client_creation(ssid=args.twog_ssid, password=args.twog_passwd,
-                                                      security=args.twog_security, band='2.4G',
-                                                      radio=args.twog_radio, num_stations=args.twog_num_stations,
-                                                      start_id=args.twog_start_id, all_sta=True)
-                if args.fiveg_num_stations:
-                    sta_list_5g = mixed_obj.virtual_client_creation(ssid=args.fiveg_ssid, password=args.fiveg_passwd,
-                                                      security=args.fiveg_security, band='5G',
-                                                      radio=args.fiveg_radio, num_stations=args.fiveg_num_stations,
-                                                      start_id=args.fiveg_start_id, all_sta=True)
-                if args.sixg_num_stations:
-                    sta_list_6g = mixed_obj.virtual_client_creation(ssid=args.sixg_ssid, password=args.sixg_passwd,
-                                                      security=args.sixg_security, band='6G',
-                                                      radio=args.sixg_radio, num_stations=args.sixg_num_stations,
-                                                      start_id=args.sixg_start_id, all_sta=True)
-                # updating num stations and station list
-                virtual_station_list = sta_list_2g + sta_list_5g + sta_list_6g
-                logger.info("Selected Virtual Station List:", virtual_station_list)
-                mixed_obj.station_list = virtual_station_list
-                mixed_obj.num_staions = args.twog_num_stations + args.fiveg_num_stations + args.sixg_num_stations
-            if(args.use_default_config):
-                ssid = 'Test Configured'
-                security = 'Test Configured'
-            else:
-                ssid = str(args.twog_ssid + ',' + args.fiveg_ssid + ',' + args.sixg_ssid)
-                security = str(args.twog_security + ',' + args.fiveg_security + ',' + args.sixg_security)
-            mixed_obj.ssid = ssid
-            mixed_obj.security = security
+                if not args.scenario:
+                    sta_list_2g, sta_list_5g, sta_list_6g = [], [], []
+                    if args.twog_num_stations:
+                        sta_list_2g = mixed_obj.virtual_client_creation(ssid=args.twog_ssid, password=args.twog_passwd,
+                                                                        security=args.twog_security, band='2.4G',
+                                                                        radio=args.twog_radio,
+                                                                        num_stations=args.twog_num_stations,
+                                                                        start_id=args.twog_start_id, all_sta=True)
+                    if args.fiveg_num_stations:
+                        sta_list_5g = mixed_obj.virtual_client_creation(ssid=args.fiveg_ssid,
+                                                                        password=args.fiveg_passwd,
+                                                                        security=args.fiveg_security, band='5G',
+                                                                        radio=args.fiveg_radio,
+                                                                        num_stations=args.fiveg_num_stations,
+                                                                        start_id=args.fiveg_start_id, all_sta=True)
+                    if args.sixg_num_stations:
+                        sta_list_6g = mixed_obj.virtual_client_creation(ssid=args.sixg_ssid, password=args.sixg_passwd,
+                                                                        security=args.sixg_security, band='6G',
+                                                                        radio=args.sixg_radio,
+                                                                        num_stations=args.sixg_num_stations,
+                                                                        start_id=args.sixg_start_id, all_sta=True)
+                    # updating num stations and station list
+                    virtual_station_list = sta_list_2g + sta_list_5g + sta_list_6g
+                    logger.info("Selected Virtual Station List:", virtual_station_list)
+                    mixed_obj.station_list = virtual_station_list
+                    mixed_obj.num_staions = args.twog_num_stations + args.fiveg_num_stations + args.sixg_num_stations
+                    if (args.use_default_config):
+                        ssid = 'Test Configured'
+                        security = 'Test Configured'
+                    else:
+                        ssid = str(args.twog_ssid + ',' + args.fiveg_ssid + ',' + args.sixg_ssid)
+                        security = str(args.twog_security + ',' + args.fiveg_security + ',' + args.sixg_security)
+                    mixed_obj.ssid = ssid
+                    mixed_obj.security = security
             # tests will run with respect to bands
             logger.info("Selected Tests List: ".format(args.tests))
             if args.tests:
                 if args.parallel:
                     if "1" in args.tests:
                         t1_parent, t1_child = Pipe()
-                        t1 = Process(target=mixed_obj.ping_test, 
-                                    kwargs={
-                                        'ssid': ssid,
-                                        'password': password,
-                                        'security': security,
-                                        'target': args.target,
-                                        'interval': args.ping_interval,
-                                        'conn': t1_child, 
-                                        'all_bands': True
-                                    }
-                                )
+                        t1 = Process(target=mixed_obj.ping_test,
+                                     kwargs={
+                                         'ssid': ssid,
+                                         'password': password,
+                                         'security': security,
+                                         'target': args.target,
+                                         'interval': args.ping_interval,
+                                         'conn': t1_child,
+                                         'all_bands': True
+                                     }
+                                     )
                         t1.start()
                         # mixed_obj.ping_test(ssid=ssid, password=password, security=security, target=args.target,
                         #                     interval=args.ping_interval)
                     if "2" in args.tests:
                         t2_parent, t2_child = Pipe()
-                        t2 = Process(target=mixed_obj.qos_test, 
-                                    kwargs={
-                                        'ssid': ssid,
-                                        'password': password,
-                                        'security': security,
-                                        'ap_name': args.dut_model,
-                                        'upstream': args.upstream_port,
-                                        'tos': args.tos,
-                                        'traffic_type': args.traffic_type,
-                                        'side_a_min': args.side_a_min,
-                                        'side_b_min': args.side_b_min,
-                                        'side_a_max': args.side_a_max,
-                                        'side_b_max': args.side_b_min,
-                                        'conn': t2_child, 
-                                        'all_bands': True
-                                    }
-                                )
+                        t2 = Process(target=mixed_obj.qos_test,
+                                     kwargs={
+                                         'ssid': ssid,
+                                         'password': password,
+                                         'security': security,
+                                         'ap_name': args.dut_model,
+                                         'upstream': args.upstream_port,
+                                         'tos': args.tos,
+                                         'traffic_type': args.traffic_type,
+                                         'side_a_min': args.side_a_min,
+                                         'side_b_min': args.side_b_min,
+                                         'side_a_max': args.side_a_max,
+                                         'side_b_max': args.side_b_min,
+                                         'conn': t2_child,
+                                         'all_bands': True
+                                     }
+                                     )
                         t2.start()
                         # mixed_obj.qos_test(ssid=ssid, password=password, security=security, ap_name=args.dut_model,
                         #                 upstream=args.upstream_port, tos=args.tos, traffic_type=args.traffic_type,
@@ -2855,56 +3163,55 @@ INCLUDE_IN_README: False
                         #                 side_a_max=args.side_a_max, side_b_max=args.side_b_min)
                     if "3" in args.tests:
                         t3_parent, t3_child = Pipe()
-                        t3 = Process(target=mixed_obj.ftp_test, 
-                                    kwargs={
-                                        'ssid': ssid,
-                                        'password': password,
-                                        'security': security,
-                                        'bands': Bands,
-                                        'directions': args.direction,
-                                        'file_sizes': args.ftp_file_sizes,
-                                        'conn': t3_child, 
-                                        'all_bands': True
-                                    }
-                                )
+                        t3 = Process(target=mixed_obj.ftp_test,
+                                     kwargs={
+                                         'ssid': ssid,
+                                         'password': password,
+                                         'security': security,
+                                         'bands': Bands,
+                                         'directions': args.direction,
+                                         'file_sizes': args.ftp_file_sizes,
+                                         'conn': t3_child,
+                                         'all_bands': True
+                                     }
+                                     )
                         t3.start()
                         # mixed_obj.ftp_test(ssid=ssid, password=password, security=security, bands=band,
                         #                 directions=args.direction, file_sizes=args.ftp_file_sizes)
                     if "4" in args.tests:
                         t4_parent, t4_child = Pipe()
-                        t4 = Process(target=mixed_obj.http_test, 
-                                    kwargs={
-                                        'ssid': ssid, 
-                                        'password': password, 
-                                        'security': security,
-                                        'http_file_size': args.http_file_size, 
-                                        'target_per_ten': args.target_per_ten,
-                                        'conn': t4_child, 
-                                        'all_bands': True
-                                    }
-                                )
+                        t4 = Process(target=mixed_obj.http_test,
+                                     kwargs={
+                                         'ssid': ssid,
+                                         'password': password,
+                                         'security': security,
+                                         'http_file_size': args.http_file_size,
+                                         'target_per_ten': args.target_per_ten,
+                                         'conn': t4_child,
+                                         'all_bands': True
+                                     }
+                                     )
                         t4.start()
                         # mixed_obj.http_test(ssid=ssid, password=password, security=security,
                         #                     http_file_size=args.http_file_size, target_per_ten=args.target_per_ten)
                     if "5" in args.tests:
                         t5_parent, t5_child = Pipe()
-                        t5 = Process(target=mixed_obj.multicast_test, 
-                                    kwargs={
-                                        'endp_types': args.mc_traffic_type, 
-                                        'mc_tos': args.mc_tos,
-                                        'side_a_min': args.side_a_min_bps, 
-                                        'side_b_min': args.side_b_min_bps,
-                                        'side_a_pdu': args.side_a_min_pdu, 
-                                        'side_b_pdu': args.side_b_min_pdu,
-                                        'conn': t5_child, 
-                                        'all_bands': True
-                                    }
-                                )
+                        t5 = Process(target=mixed_obj.multicast_test,
+                                     kwargs={
+                                         'endp_types': args.mc_traffic_type,
+                                         'mc_tos': args.mc_tos,
+                                         'side_a_min': args.side_a_min_bps,
+                                         'side_b_min': args.side_b_min_bps,
+                                         'side_a_pdu': args.side_a_min_pdu,
+                                         'side_b_pdu': args.side_b_min_pdu,
+                                         'conn': t5_child,
+                                         'all_bands': True
+                                     }
+                                     )
                         t5.start()
                         # mixed_obj.multicast_test(endp_types=args.mc_traffic_type, mc_tos=args.mc_tos,
                         #                         side_a_min=args.side_a_min_bps, side_b_min=args.side_b_min_bps,
                         #                         side_a_pdu=args.side_a_min_pdu, side_b_pdu=args.side_b_min_pdu)
-
 
                     # if "5" in args.tests:
                     #     t5.start()
@@ -2942,25 +3249,27 @@ INCLUDE_IN_README: False
                     if "1" in args.tests:
                         if mixed_obj.dowebgui:
                             try:
-                                with open(mixed_obj.result_dir+"/../../Running_instances/{}_{}_running.json".format(mixed_obj.host,mixed_obj.test_name), 'r') as file:
+                                with open(mixed_obj.result_dir + "/../../Running_instances/{}_{}_running.json".format(
+                                        mixed_obj.host, mixed_obj.test_name), 'r') as file:
                                     data = json.load(file)
                                     if data["status"] != "Running":
                                         logging.info('Test is stopped by the user')
                                         mixed_obj.stopped = True
-                                if not mixed_obj.stopped: 
-                                    overall_status['ping']="started"
-                                    overall_status["time"]=datetime.datetime.now().strftime("%Y %d %H:%M:%S")
+                                if not mixed_obj.stopped:
+                                    overall_status['ping'] = "started"
+                                    overall_status["time"] = datetime.datetime.now().strftime("%Y %d %H:%M:%S")
                                     overall_csv.append(overall_status.copy())
                                     df1 = pd.DataFrame(overall_csv)
                                     df1.to_csv('{}/overall_status.csv'.format(mixed_obj.result_dir), index=False)
-                                    mixed_obj.ping_execution=True
-                                    mixed_obj.ping_test(ssid=ssid, password=password, security=security, target=args.target,
-                                                interval=args.ping_interval, all_bands=True)
-                            except:
+                                    mixed_obj.ping_execution = True
+                                    mixed_obj.ping_test(ssid=ssid, password=password, security=security,
+                                                        target=args.target,
+                                                        interval=args.ping_interval, all_bands=True)
+                            except BaseException:
                                 logger.info("Error while running for webui during ping execution")
                             try:
-                                overall_status['ping']="stopped"
-                                overall_status["time"]=datetime.datetime.now().strftime("%Y %d %H:%M:%S")
+                                overall_status['ping'] = "stopped"
+                                overall_status["time"] = datetime.datetime.now().strftime("%Y %d %H:%M:%S")
                                 overall_csv.append(overall_status.copy())
                                 df1 = pd.DataFrame(overall_csv)
                                 df1.to_csv('{}/overall_status.csv'.format(mixed_obj.result_dir), index=False)
@@ -2968,125 +3277,134 @@ INCLUDE_IN_README: False
                                 logger.info(e)
                         else:
                             mixed_obj.ping_test(ssid=ssid, password=password, security=security, target=args.target,
-                                            interval=args.ping_interval, all_bands=True)
+                                                interval=args.ping_interval, all_bands=True)
                     if "2" in args.tests:
                         if mixed_obj.dowebgui:
                             try:
-                                with open(mixed_obj.result_dir+"/../../Running_instances/{}_{}_running.json".format(mixed_obj.host,mixed_obj.test_name), 'r') as file:
+                                with open(mixed_obj.result_dir + "/../../Running_instances/{}_{}_running.json".format(
+                                        mixed_obj.host, mixed_obj.test_name), 'r') as file:
                                     data = json.load(file)
                                     if data["status"] != "Running":
                                         logging.info('Test is stopped by the user')
                                         mixed_obj.stopped = True
                                 if not mixed_obj.stopped:
-                                    overall_status['qos']="started"
-                                    overall_status["time"]=datetime.datetime.now().strftime("%Y %d %H:%M:%S")
+                                    overall_status['qos'] = "started"
+                                    overall_status["time"] = datetime.datetime.now().strftime("%Y %d %H:%M:%S")
                                     if overall_status['ping'] == "stopped":
                                         overall_status['ping'] == "completed"
                                     overall_csv.append(overall_status.copy())
                                     df1 = pd.DataFrame(overall_csv)
                                     df1.to_csv('{}/overall_status.csv'.format(mixed_obj.result_dir), index=False)
-                                    mixed_obj.qos_execution=True
-                                    mixed_obj.qos_test(ssid=ssid, password=password, security=security, ap_name=args.dut_model,
-                                        upstream=args.upstream_port, tos=args.tos, traffic_type=args.traffic_type,
-                                        side_a_min=args.side_a_min, side_b_min=args.side_b_min,
-                                        side_a_max=args.side_a_max, side_b_max=args.side_b_min, all_bands=True)
-                            except:
+                                    mixed_obj.qos_execution = True
+                                    mixed_obj.qos_test(ssid=ssid, password=password, security=security,
+                                                       ap_name=args.dut_model,
+                                                       upstream=args.upstream_port, tos=args.tos,
+                                                       traffic_type=args.traffic_type,
+                                                       side_a_min=args.side_a_min, side_b_min=args.side_b_min,
+                                                       side_a_max=args.side_a_max, side_b_max=args.side_b_min, all_bands=True)
+                            except BaseException:
                                 logger.info("Error while running for webui during qos execution")
                             try:
-                                overall_status['qos']="stopped"
-                                overall_status["time"]=datetime.datetime.now().strftime("%Y %d %H:%M:%S")
+                                overall_status['qos'] = "stopped"
+                                overall_status["time"] = datetime.datetime.now().strftime("%Y %d %H:%M:%S")
                                 overall_csv.append(overall_status.copy())
                                 df1 = pd.DataFrame(overall_csv)
                                 df1.to_csv('{}/overall_status.csv'.format(mixed_obj.result_dir), index=False)
                             except Exception as e:
-                                logger.info(e)   
+                                logger.info(e)
                         else:
                             mixed_obj.qos_test(ssid=ssid, password=password, security=security, ap_name=args.dut_model,
-                                            upstream=args.upstream_port, tos=args.tos, traffic_type=args.traffic_type,
-                                            side_a_min=args.side_a_min, side_b_min=args.side_b_min,
-                                            side_a_max=args.side_a_max, side_b_max=args.side_b_min, all_bands=True)
+                                               upstream=args.upstream_port, tos=args.tos,
+                                               traffic_type=args.traffic_type,
+                                               side_a_min=args.side_a_min, side_b_min=args.side_b_min,
+                                               side_a_max=args.side_a_max, side_b_max=args.side_b_min, all_bands=True)
                     if "3" in args.tests:
                         if mixed_obj.dowebgui:
                             try:
-                                with open(mixed_obj.result_dir+"/../../Running_instances/{}_{}_running.json".format(mixed_obj.host,mixed_obj.test_name), 'r') as file:
+                                with open(mixed_obj.result_dir + "/../../Running_instances/{}_{}_running.json".format(
+                                        mixed_obj.host, mixed_obj.test_name), 'r') as file:
                                     data = json.load(file)
                                     if data["status"] != "Running":
                                         logging.info('Test is stopped by the user')
                                         mixed_obj.stopped = True
                                 if not mixed_obj.stopped:
-                                    overall_status['ftp']="started"
+                                    overall_status['ftp'] = "started"
                                     if overall_status['ping'] == "stopped":
                                         overall_status['ping'] == "completed"
                                     if overall_status['qos'] == "stopped":
                                         overall_status['qos'] == "completed"
-                                    overall_status["time"]=datetime.datetime.now().strftime("%Y %d %H:%M:%S")
+                                    overall_status["time"] = datetime.datetime.now().strftime("%Y %d %H:%M:%S")
                                     overall_csv.append(overall_status.copy())
                                     df1 = pd.DataFrame(overall_csv)
                                     df1.to_csv('{}/overall_status.csv'.format(mixed_obj.result_dir), index=False)
-                                    mixed_obj.ftp_execution=True
+                                    mixed_obj.ftp_execution = True
                                     mixed_obj.ftp_test(ssid=ssid, password=password, security=security, bands=Bands,
-                                                                                directions=args.direction, file_sizes=args.ftp_file_sizes, all_bands=True)
-                            except:    
+                                                       directions=args.direction, file_sizes=args.ftp_file_sizes, all_bands=True)
+                            except BaseException:
                                 logger.info("Error while running for webui during ftp execution")
                             try:
-                                overall_status['ftp']="stopped"
-                                overall_status["time"]=datetime.datetime.now().strftime("%Y %d %H:%M:%S")
+                                overall_status['ftp'] = "stopped"
+                                overall_status["time"] = datetime.datetime.now().strftime("%Y %d %H:%M:%S")
                                 overall_csv.append(overall_status.copy())
                                 df1 = pd.DataFrame(overall_csv)
                                 df1.to_csv('{}/overall_status.csv'.format(mixed_obj.result_dir), index=False)
                             except Exception as e:
-                                logger.info(e)   
+                                logger.info(e)
                         else:
                             mixed_obj.ftp_test(ssid=ssid, password=password, security=security, bands=Bands,
-                                            directions=args.direction, file_sizes=args.ftp_file_sizes, all_bands=True)
+                                               directions=args.direction, file_sizes=args.ftp_file_sizes,
+                                               all_bands=True)
                     if "4" in args.tests:
                         if mixed_obj.dowebgui:
                             try:
-                                with open(mixed_obj.result_dir+"/../../Running_instances/{}_{}_running.json".format(mixed_obj.host,mixed_obj.test_name), 'r') as file:
+                                with open(mixed_obj.result_dir + "/../../Running_instances/{}_{}_running.json".format(
+                                        mixed_obj.host, mixed_obj.test_name), 'r') as file:
                                     data = json.load(file)
                                     if data["status"] != "Running":
                                         logging.info('Test is stopped by the user')
                                         mixed_obj.stopped = True
                                 if not mixed_obj.stopped:
-                                    overall_status['http']="started"
+                                    overall_status['http'] = "started"
                                     if overall_status['ping'] == "stopped":
                                         overall_status['ping'] == "completed"
                                     if overall_status['qos'] == "stopped":
                                         overall_status['qos'] == "completed"
                                     if overall_status['ftp'] == "stopped":
                                         overall_status['ftp'] == "completed"
-                                    overall_status["time"]=datetime.datetime.now().strftime("%Y %d %H:%M:%S")
+                                    overall_status["time"] = datetime.datetime.now().strftime("%Y %d %H:%M:%S")
                                     overall_csv.append(overall_status.copy())
                                     df1 = pd.DataFrame(overall_csv)
                                     df1.to_csv('{}/overall_status.csv'.format(mixed_obj.result_dir), index=False)
-                                    mixed_obj.http_execution=True
+                                    mixed_obj.http_execution = True
                                     mixed_obj.http_test(ssid=ssid, password=password, security=security,
-                                            http_file_size=args.http_file_size, target_per_ten=args.target_per_ten,
-                                            all_bands=True)
-                            except:    
+                                                        http_file_size=args.http_file_size,
+                                                        target_per_ten=args.target_per_ten,
+                                                        all_bands=True)
+                            except:
                                 logger.info("Error while running for webui during http execution")
                             try:
-                                overall_status['http']="stopped"
-                                overall_status["time"]=datetime.datetime.now().strftime("%Y %d %H:%M:%S")
+                                overall_status['http'] = "stopped"
+                                overall_status["time"] = datetime.datetime.now().strftime("%Y %d %H:%M:%S")
                                 overall_csv.append(overall_status.copy())
                                 df1 = pd.DataFrame(overall_csv)
                                 df1.to_csv('{}/overall_status.csv'.format(mixed_obj.result_dir), index=False)
                             except Exception as e:
-                                logger.info(e)   
+                                logger.info(e)
                         else:
                             mixed_obj.http_test(ssid=ssid, password=password, security=security,
-                                            http_file_size=args.http_file_size, target_per_ten=args.target_per_ten,
-                                            all_bands=True)
+                                                http_file_size=args.http_file_size, target_per_ten=args.target_per_ten,
+                                                all_bands=True)
                     if "5" in args.tests:
                         if mixed_obj.dowebgui:
                             try:
-                                with open(mixed_obj.result_dir+"/../../Running_instances/{}_{}_running.json".format(mixed_obj.host,mixed_obj.test_name), 'r') as file:
+                                with open(mixed_obj.result_dir + "/../../Running_instances/{}_{}_running.json".format(
+                                        mixed_obj.host, mixed_obj.test_name), 'r') as file:
                                     data = json.load(file)
                                     if data["status"] != "Running":
                                         logging.info('Test is stopped by the user')
                                         mixed_obj.stopped = True
                                 if not mixed_obj.stopped:
-                                    overall_status['mc']="started"
+                                    overall_status['mc'] = "started"
                                     if overall_status['ping'] == "stopped":
                                         overall_status['ping'] == "completed"
                                     if overall_status['qos'] == "stopped":
@@ -3095,54 +3413,70 @@ INCLUDE_IN_README: False
                                         overall_status['ftp'] == "completed"
                                     if overall_status['http'] == "stopped":
                                         overall_status['http'] == "completed"
-                                    overall_status["time"]=datetime.datetime.now().strftime("%Y %d %H:%M:%S")
+                                    overall_status["time"] = datetime.datetime.now().strftime("%Y %d %H:%M:%S")
                                     overall_csv.append(overall_status.copy())
                                     df1 = pd.DataFrame(overall_csv)
                                     df1.to_csv('{}/overall_status.csv'.format(mixed_obj.result_dir), index=False)
-                                    mixed_obj.mc_execution=True
+                                    mixed_obj.mc_execution = True
                                     mixed_obj.multicast_test(endp_types=args.mc_traffic_type, mc_tos=args.mc_tos,
-                                                    side_a_min=args.side_a_min_bps, side_b_min=args.side_b_min_bps,
-                                                    side_a_pdu=args.side_a_min_pdu, side_b_pdu=args.side_b_min_pdu,
-                                                    all_bands=True)
-                            except Exception as e:    
+                                                             side_a_min=args.side_a_min_bps,
+                                                             side_b_min=args.side_b_min_bps,
+                                                             side_a_pdu=args.side_a_min_pdu,
+                                                             side_b_pdu=args.side_b_min_pdu,
+                                                             all_bands=True)
+                            except Exception as e:
                                 logger.info(e)
                             try:
-                                overall_status['mc']="stopped"
-                                overall_status["time"]=datetime.datetime.now().strftime("%Y %d %H:%M:%S")
+                                overall_status['mc'] = "stopped"
+                                overall_status["time"] = datetime.datetime.now().strftime("%Y %d %H:%M:%S")
                                 overall_csv.append(overall_status)
                                 df1 = pd.DataFrame(overall_csv)
                                 df1.to_csv('{}/overall_status.csv'.format(mixed_obj.result_dir), index=False)
                             except Exception as e:
-                                logger.info(e)   
+                                logger.info(e)
                         else:
                             mixed_obj.multicast_test(endp_types=args.mc_traffic_type, mc_tos=args.mc_tos,
-                                                    side_a_min=args.side_a_min_bps, side_b_min=args.side_b_min_bps,
-                                                    side_a_pdu=args.side_a_min_pdu, side_b_pdu=args.side_b_min_pdu,
-                                                    all_bands=True)
+                                                     side_a_min=args.side_a_min_bps, side_b_min=args.side_b_min_bps,
+                                                     side_a_pdu=args.side_a_min_pdu, side_b_pdu=args.side_b_min_pdu,
+                                                     all_bands=True)
                 # generating overall report
+                # if not args.clients_down_time:
                 mixed_obj.generate_all_report()
+
                 if mixed_obj.dowebgui:
                     try:
                         overall_status["status"] = "completed"
                         if overall_status['ping'] == "stopped":
                             overall_status['ping'] == "completed"
                         if overall_status['qos'] == "stopped":
-                                overall_status['qos'] == "completed"
+                            overall_status['qos'] == "completed"
                         if overall_status['ftp'] == "stopped":
-                                overall_status['ftp'] == "completed"
+                            overall_status['ftp'] == "completed"
                         if overall_status['http'] == "stopped":
-                                overall_status['http'] == "completed"
+                            overall_status['http'] == "completed"
                         if overall_status['mc'] == "stopped":
-                                overall_status['mc'] == "completed"
-                        overall_status["time"]=datetime.datetime.now().strftime("%Y %d %H:%M:%S")
+                            overall_status['mc'] == "completed"
+                        overall_status["time"] = datetime.datetime.now().strftime("%Y %d %H:%M:%S")
                         overall_csv.append(overall_status.copy())
                         df1 = pd.DataFrame(overall_csv)
                         df1.to_csv('{}/overall_status.csv'.format(mixed_obj.result_dir), index=False)
                     except Exception as e:
-                        logging.info("Error while wrinting status file for webui",e)
+                        logging.info("Error while wrinting status file for webui", e)
             else:
                 print("No Test Selected. Please select the Tests.")
                 exit(0)
+        # Make clients down as per user interval
+        if args.clients_down_time is not None and args.clients_down_time >=1:
+            mixed_obj.station_profile.admin_down()
+            print(mixed_obj.station_profile.station_names)
+            logger.info("Admin Down clients for for 30 seconds")
+            time.sleep(int(args.clients_down_time))
+            mixed_obj.station_profile.admin_up()
+            time.sleep(30)
+            if not LFUtils.wait_until_ports_admin_up(base_url=mixed_obj.lfclient_url,
+                                                     port_list=mixed_obj.station_list,
+                                                     debug_=mixed_obj.debug):
+                logger.info("Unable to bring all stations up")
 
 
 if __name__ == "__main__":

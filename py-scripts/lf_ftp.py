@@ -620,7 +620,7 @@ class FtpTest(LFCliBase):
             ftp_server_ip = ftp_resource_url["interface"]["ip"]
             ip = ftp_server_ip
 
-        ssh.connect(ip, port=port, username=user, password=pswd, banner_timeout=600)
+        ssh.connect(ip, port=port, username=user, password=pswd, banner_timeout=600,  allow_agent=False, look_for_keys=False)
         cmd = '[ -f /home/lanforge/ftp_test.txt ] && echo "True" || echo "False"'
         stdin, stdout, stderr = ssh.exec_command(str(cmd))
         output = stdout.readlines()
@@ -833,8 +833,8 @@ class FtpTest(LFCliBase):
         uc_min_data = self.json_get("layer4/list?fields=uc-min")
         total_url_data = self.json_get("layer4/list?fields=total-urls")
         bytes_rd = self.json_get("layer4/list?fields=bytes-rd") 
-        print(uc_avg_data)
-        print(total_url_data)
+        logger.info(uc_avg_data)
+        logger.info(total_url_data)
         self.data_for_webui = {}
 
         if 'endpoint' in uc_avg_data.keys():
@@ -1346,7 +1346,7 @@ class FtpTest(LFCliBase):
 
         # To move ftp_datavalues.csv in report folder  
         report_path_date_time = self.report.get_path_date_time()
-        shutil.move('ftp_datavalues.csv',report_path_date_time)
+        # shutil.move('ftp_datavalues.csv',report_path_date_time)
 
         self.report.set_title("FTP Test")
         self.report.set_date(date)
@@ -1425,7 +1425,7 @@ class FtpTest(LFCliBase):
         self.report.set_obj_html(
                         _obj_title=f"Average time taken to {self.direction} file ",
                         _obj=f"The below graph represents average time taken to {self.direction} for each client  "
-                                f"(WiFi) traffic.  X- axis shows “Average time taken to {self.direction} a file ” and Y-axis shows "
+                                f"(WiFi) traffic.  X- axis shows 'Average time taken to {self.direction} a file' and Y-axis shows "
                                 f"Client names.")
                    
         self.report.build_objective()

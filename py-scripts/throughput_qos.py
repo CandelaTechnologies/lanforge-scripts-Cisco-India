@@ -649,6 +649,9 @@ class ThroughputQOS(Realm):
                 elif case == "both" or case == "BOTH":
                     num_stations.append("{} + {}".format(str(len(self.sta_list) // 2), str(len(self.sta_list) // 2)))
                     mode.append("bgn-AX + an-AX")
+                else:
+                    num_stations.append("{}".format(str(len(self.sta_list))))
+                    mode.append("AUTO")
                 for key in res[case]['test_results'][0][1]:
                     # if case == "both" or case == "BOTH":
                     #     key
@@ -799,6 +802,7 @@ class ThroughputQOS(Realm):
         report.set_table_title(
             f"Overall {self.direction} throughput for all TOS i.e BK | BE | Video (VI) | Voice (VO)")
         report.build_table_title()
+        print(res["throughput_table_df"],'Ramayan')
         df_throughput = pd.DataFrame(res["throughput_table_df"])
         report.set_table_dataframe(df_throughput)
         report.build_table()
@@ -807,7 +811,7 @@ class ThroughputQOS(Realm):
                 _obj_title=f"Overall {self.direction} throughput for {len(self.sta_list)} clients for {key} band with different TOS.",
                 _obj=f"The below graph represents overall {self.direction} throughput for all "
                      "connected stations running BK, BE, VO, VI traffic with different "
-                     "intended loads per station – {}".format(
+                     "intended loads per station ? {}".format(
                     "".join(str(key))))
         report.build_objective()
         print("data set",res["graph_df"][key][0])
@@ -819,7 +823,7 @@ class ThroughputQOS(Realm):
                                 _graph_image_name=f"tos_{self.direction}_{key}Hz",
                                 _label=["BK", "BE", "VI", "VO"],
                                 _xaxis_step=1,
-                                _graph_title=f"Overall {self.direction} throughput – BK,BE,VO,VI traffic streams",
+                                _graph_title=f"Overall {self.direction} throughput ? BK,BE,VO,VI traffic streams",
                                 _title_size=16,
                                 _color=['orange', 'lightcoral', 'steelblue', 'lightgrey'],
                                 _color_edge='black',
@@ -937,8 +941,8 @@ class ThroughputQOS(Realm):
                         report.set_obj_html(
                             _obj_title=f"Individual {self.direction} throughput with intended load {load}/station for traffic BK(WiFi).",
                             _obj=f"The below graph represents individual throughput for {len(self.sta_list)} clients running BK "
-                                f"(WiFi) traffic.  Y- axis shows “Client names“ and X-axis shows “"
-                                f"Throughput in Mbps”.")
+                                f"(WiFi) traffic.  Y- axis shows ?Client names? and X-axis shows ?"
+                                f"Throughput in Mbps?.")
                         report.build_objective()
                         graph = lf_bar_graph_horizontal(_data_set=individual_set, _xaxis_name="Throughput in Mbps",
                                             _yaxis_name="Client names",
@@ -1016,8 +1020,8 @@ class ThroughputQOS(Realm):
                         report.set_obj_html(
                             _obj_title=f"Individual {self.direction} throughput with intended load {load}/station for traffic BE(WiFi).",
                             _obj=f"The below graph represents individual throughput for {len(self.sta_list)} clients running BE "
-                                f"(WiFi) traffic.  Y- axis shows “Client names“ and X-axis shows “"
-                                f"Throughput in Mbps”.")
+                                f"(WiFi) traffic.  Y- axis shows ?Client names? and X-axis shows ?"
+                                f"Throughput in Mbps?.")
                         report.build_objective()
                         graph = lf_bar_graph_horizontal(_data_set=individual_set, _xaxis_name="Throughput in Mbps",
                                             _yaxis_name="Client names",
@@ -1095,8 +1099,8 @@ class ThroughputQOS(Realm):
                         report.set_obj_html(
                                 _obj_title=f"Individual {self.direction} throughput with intended load {load}/station for traffic VI(WiFi).",
                                 _obj=f"The below graph represents individual throughput for {len(self.sta_list)} clients running VI "
-                                    f"(WiFi) traffic.  Y- axis shows “Client names“ and X-axis shows “"
-                                    f"Throughput in Mbps”.")
+                                    f"(WiFi) traffic.  Y- axis shows ?Client names? and X-axis shows ?"
+                                    f"Throughput in Mbps?.")
                         report.build_objective()
                         graph = lf_bar_graph_horizontal(_data_set=individual_set, _xaxis_name="Throughput in Mbps",
                                             _yaxis_name="Client names",
@@ -1174,8 +1178,8 @@ class ThroughputQOS(Realm):
                         report.set_obj_html(
                             _obj_title=f"Individual {self.direction} throughput with intended load {load}/station for traffic VO(WiFi).",
                             _obj=f"The below graph represents individual throughput for {len(self.sta_list)} clients running VO "
-                                f"(WiFi) traffic.  Y- axis shows “Client names“ and X-axis shows “"
-                                f"Throughput in Mbps”.")
+                                f"(WiFi) traffic.  Y- axis shows ?Client names? and X-axis shows ?"
+                                f"Throughput in Mbps?.")
                         report.build_objective()
                         graph = lf_bar_graph_horizontal(_data_set=individual_set, _xaxis_name="Throughput in Mbps",
                                             _yaxis_name="Client names",
@@ -1343,6 +1347,7 @@ def main():
     parser.add_argument('--radio_2g', help="radio which supports 2.4G bandwidth", default="wiphy0")
     parser.add_argument('--radio_5g', help="radio which supports 5G bandwidth", default="wiphy1")
     parser.add_argument('--radio_6g', help="radio which supports 6G bandwidth", default="wiphy2")
+    parser.add_argument('--start_id', help="Mention virtual stations start id", default=0, type=int)
     args = parser.parse_args()
     # help summary
     if args.help_summary:
@@ -1392,7 +1397,7 @@ def main():
             args.bands = bands[i]
             args.mode = 13
             if args.create_sta:
-                station_list = LFUtils.portNameSeries(prefix_="sta", start_id_=0, end_id_=int(args.num_stations) - 1,
+                station_list = LFUtils.portNameSeries(prefix_="sta", start_id_=args.start_id, end_id_=int(args.num_stations) + args.start_id - 1,
                                                       padding_number_=10000, radio=args.radio_2g)
             else:
                 station_list = args.sta_names.split(",")
@@ -1400,7 +1405,7 @@ def main():
             args.bands = bands[i]
             args.mode = 14
             if args.create_sta:
-                station_list = LFUtils.portNameSeries(prefix_="sta", start_id_=0, end_id_=int(args.num_stations) - 1,
+                station_list = LFUtils.portNameSeries(prefix_="sta", start_id_=args.start_id, end_id_=int(args.num_stations) + args.start_id - 1,
                                                       padding_number_=10000,
                                                       radio=args.radio_5g)
             else:
@@ -1409,7 +1414,7 @@ def main():
             args.bands = bands[i]
             args.mode = 14
             if args.create_sta:
-                station_list = LFUtils.portNameSeries(prefix_="sta", start_id_=0, end_id_=int(args.num_stations) - 1,
+                station_list = LFUtils.portNameSeries(prefix_="sta", start_id_=args.start_id, end_id_=int(args.num_stations) + args.start_id - 1,
                                                       padding_number_=10000,
                                                       radio=args.radio_6g)
             else:
@@ -1434,6 +1439,7 @@ def main():
         else:
             print("Band " + bands[i] + " Not Exist")
             exit(1)
+        print('asdfasdf', station_list)
         # ---------------------------------------#
         for index in range(len(loads["download"])):
             throughput_qos = ThroughputQOS(host=args.mgr,
@@ -1506,4 +1512,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

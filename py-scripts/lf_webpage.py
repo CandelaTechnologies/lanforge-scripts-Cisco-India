@@ -435,7 +435,7 @@ class HttpDownload(Realm):
         port = ssh_port
         ssh = paramiko.SSHClient()  # creating shh client object we use this object to connect to router
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # automatically adds the missing host key
-        ssh.connect(ip, port=port, username=user, password=pswd, banner_timeout=600)
+        ssh.connect(ip, port=port, username=user, password=pswd, banner_timeout=600,  allow_agent=False, look_for_keys=False)
         cmd = '[ -f /usr/local/lanforge/nginx/html/webpage.html ] && echo "True" || echo "False"'
         stdin, stdout, stderr = ssh.exec_command(str(cmd))
         output = stdout.readlines()
@@ -706,7 +706,7 @@ class HttpDownload(Realm):
 
         # To store http_datavalues.csv in report folder  
         report_path_date_time = report.get_path_date_time()
-        shutil.move('http_datavalues.csv',report_path_date_time)
+        # shutil.move('http_datavalues.csv',report_path_date_time)
         if bands == "Both":
             num_stations = num_stations * 2
         report.set_title("HTTP DOWNLOAD TEST")
@@ -733,7 +733,7 @@ class HttpDownload(Realm):
         report.move_graph_image()
         report.build_graph()
         report.set_obj_html("Average time taken to download file ","The below graph represents average time taken to download for each client  "
-                            ".  X- axis shows “Average time taken to download a file ” and Y-axis shows "
+                            ".  X- axis shows ?Average time taken to download a file ? and Y-axis shows "
                             "Client names.")
         report.build_objective()
         graph = self.generate_graph(dataset=dataset, lis=lis, bands=bands)
