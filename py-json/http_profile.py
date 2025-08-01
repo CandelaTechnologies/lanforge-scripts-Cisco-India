@@ -280,7 +280,7 @@ class HTTPProfile(LFCliBase):
                         "ssl_cert_fname": "ca-bundle.crt",
                         "proxy_port": 0,
                         "max_speed": self.max_speed,
-                    "proxy_auth_type": proxy_auth_type,
+                        "proxy_auth_type": proxy_auth_type,
                         "quiesce_after": self.quiesce_after
                     }
                 set_endp_data={
