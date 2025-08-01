@@ -722,7 +722,7 @@ class HttpDownload(Realm):
                                  "time taken by the client to Download the file.")
         report.build_objective()
         report.set_obj_html("No of times file Downloads","The below graph represents number of times a file downloads for each client"
-                            ". X- axis shows “No of times file downloads and Y-axis shows "
+                            ". X- axis shows ?No of times file downloads and Y-axis shows "
                             "Client names.")
         report.build_objective()
         graph2 = self.graph_2(dataset2, lis=lis, bands=bands)

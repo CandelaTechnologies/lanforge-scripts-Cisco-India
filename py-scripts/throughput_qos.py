@@ -1347,7 +1347,6 @@ def main():
     parser.add_argument('--radio_2g', help="radio which supports 2.4G bandwidth", default="wiphy0")
     parser.add_argument('--radio_5g', help="radio which supports 5G bandwidth", default="wiphy1")
     parser.add_argument('--radio_6g', help="radio which supports 6G bandwidth", default="wiphy2")
-    parser.add_argument('--start_id', help="Mention virtual stations start id", default=0, type=int)
     args = parser.parse_args()
     # help summary
     if args.help_summary:
@@ -1397,7 +1396,7 @@ def main():
             args.bands = bands[i]
             args.mode = 13
             if args.create_sta:
-                station_list = LFUtils.portNameSeries(prefix_="sta", start_id_=args.start_id, end_id_=int(args.num_stations) + args.start_id - 1,
+                station_list = LFUtils.portNameSeries(prefix_="sta", start_id_=0, end_id_=int(args.num_stations) - 1,
                                                       padding_number_=10000, radio=args.radio_2g)
             else:
                 station_list = args.sta_names.split(",")
@@ -1405,7 +1404,7 @@ def main():
             args.bands = bands[i]
             args.mode = 14
             if args.create_sta:
-                station_list = LFUtils.portNameSeries(prefix_="sta", start_id_=args.start_id, end_id_=int(args.num_stations) + args.start_id - 1,
+                station_list = LFUtils.portNameSeries(prefix_="sta", start_id_=0, end_id_=int(args.num_stations) - 1,
                                                       padding_number_=10000,
                                                       radio=args.radio_5g)
             else:
@@ -1414,7 +1413,7 @@ def main():
             args.bands = bands[i]
             args.mode = 14
             if args.create_sta:
-                station_list = LFUtils.portNameSeries(prefix_="sta", start_id_=args.start_id, end_id_=int(args.num_stations) + args.start_id - 1,
+                station_list = LFUtils.portNameSeries(prefix_="sta", start_id_=0, end_id_=int(args.num_stations) - 1,
                                                       padding_number_=10000,
                                                       radio=args.radio_6g)
             else:
@@ -1439,7 +1438,6 @@ def main():
         else:
             print("Band " + bands[i] + " Not Exist")
             exit(1)
-        print('asdfasdf', station_list)
         # ---------------------------------------#
         for index in range(len(loads["download"])):
             throughput_qos = ThroughputQOS(host=args.mgr,

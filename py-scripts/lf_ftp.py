@@ -1392,7 +1392,7 @@ class FtpTest(LFCliBase):
         self.report.set_obj_html(
                         _obj_title=f"No of times file {self.direction}",
                         _obj=f"The below graph represents number of times a file {self.direction} for each client"
-                                f"(WiFi) traffic.  X- axis shows “No of times file {self.direction}” and Y-axis shows "
+                                f"(WiFi) traffic.  X- axis shows ?No of times file {self.direction}? and Y-axis shows "
                                 f"Client names.")
                    
         self.report.build_objective()
