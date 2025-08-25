@@ -12,7 +12,6 @@ PURPOSE: The Layer 3 Traffic Generation Test is designed to test the performance
          * Supports creating user-specified amount stations on multiple radios
          * Supports configuring upload and download requested rates and PDU sizes.
          * Supports generating connections with different ToS values.
-         * Supports generating KPI data
          * Supports generating tcp and/or UDP traffic types.
          * Supports iterating over different PDU sizes
          * Supports iterating over different requested tx rates (configurable as total or per-connection value)
@@ -42,48 +41,48 @@ Example running traffic with two radios
 
         # Interopt example Creating stations
             Interopt testing creating stations
-            ./test_l3.py --lfmgr 192.168.50.104
-             --test_duration 60s
-            --polling_interval 5s
-            --upstream_port 1.1.eth2
-            --radio radio==wiphy1,stations==2,ssid==axe11000_5g,ssid_pw==lf_axe11000_5g,security==wpa2,wifi_mode==0,wifi_settings==wifi_settings,enable_flags==ht160_enable&&wpa2_enable
-            --endp_type lf_udp,lf_tcp,mc_udp
-            --rates_are_totals
-            --side_a_min_bps=2000000
-            --side_b_min_bps=3000000
-            --test_rig CT-ID-004
-            --test_tag test_l3
-            --dut_model_num AXE11000
-            --dut_sw_version 3.0.0.4.386_44266
-            --dut_hw_version 1.0
-            --dut_serial_num 123456
-            --tos BX,BE,VI,VO
-            --log_level info
-            --no_cleanup
+            ./test_l3.py --lfmgr 192.168.50.104\
+             --test_duration 60s\
+            --polling_interval 5s\
+            --upstream_port 1.1.eth2\
+            --radio radio==wiphy1,stations==2,ssid==axe11000_5g,ssid_pw==lf_axe11000_5g,security==wpa2,wifi_mode==0,wifi_settings==wifi_settings,enable_flags==ht160_enable&&wpa2_enable\
+            --endp_type lf_udp,lf_tcp,mc_udp\
+            --rates_are_totals\
+            --side_a_min_bps=2000000\
+            --side_b_min_bps=3000000\
+            --test_rig CT-ID-004\
+            --test_tag test_l3\
+            --dut_model_num AXE11000\
+            --dut_sw_version 3.0.0.4.386_44266\
+            --dut_hw_version 1.0\
+            --dut_serial_num 123456\
+            --tos BX,BE,VI,VO\
+            --log_level info\
+            --no_cleanup\
             --cleanup_cx
 
 
         # Interopt using existing stations
             Interopt testing creating stations
-            ./test_l3.py --lfmgr 192.168.91.50
-             --test_duration 60s
-            --polling_interval 5s
-            --upstream_port 1.50.eth2
-            --endp_type lf_udp,lf_tcp,mc_udp
-            --rates_are_totals
-            --side_a_min_bps=2000000
-            --side_b_min_bps=3000000
-            --test_rig CT-ID-004
-            --test_tag test_l3
-            --dut_model_num AXE11000
-            --dut_sw_version 3.0.0.4.386_44266
-            --dut_hw_version 1.0
-            --dut_serial_num 123456
-            --tos BX,BE,VI,VO
-            --use_existing_station_list
-            --existing_station_list 1.83.en1,1.84.en1
-            --log_level info
-            --no_cleanup
+            ./test_l3.py --lfmgr 192.168.91.50\
+             --test_duration 60s\
+            --polling_interval 5s\
+            --upstream_port 1.50.eth2\
+            --endp_type lf_udp,lf_tcp,mc_udp\
+            --rates_are_totals\
+            --side_a_min_bps=2000000\
+            --side_b_min_bps=3000000\
+            --test_rig CT-ID-004\
+            --test_tag test_l3\
+            --dut_model_num AXE11000\
+            --dut_sw_version 3.0.0.4.386_44266\
+            --dut_hw_version 1.0\
+            --dut_serial_num 123456\
+            --tos BX,BE,VI,VO\
+            --use_existing_station_list\
+            --existing_station_list 1.83.en1,1.84.en1\
+            --log_level info\
+            --no_cleanup\
             --cleanup_cx
 
            * UDP and TCP bi-directional test, no use of controller.
@@ -142,25 +141,25 @@ wifi_mode==0,wifi_settings==wifi_settings,enable_flags==(ht160_enable&&wpa2_enab
             --test_tag 'test_l3'
 
          # Example : LAN-1927  WPA2-TLS-Configuration
-            ./test_l3.py
-             --lfmgr 192.168.50.104
-             --test_duration 20s
-             --polling_interval 5s
-             --upstream_port 1.1.eth2
-             --radio 'radio==wiphy1,stations==1,ssid==ax88u_5g,ssid_pw==lf_ax88u_5g,security==wpa2
-,wifi_settings==wifi_settings,wifi_mode==0,enable_flags==8021x_radius&&80211r_pmska_cache,
-wifi_extra==key_mgmt&&WPA-EAP!!eap&&TLS!!identity&&testuser!!passwd&&testpasswd!!private_key&&/home/lanforge/client.p12!!
-ca_cert&&/home/lanforge/ca.pem!!pk_password&&lanforge!!ieee80211w&&Disabled'
-             --endp_type lf_udp
-             --rates_are_totals
-             --side_a_min_bps=256000
-             --side_b_min_bps=300000000
-             --test_rig ID_003
-             --test_tag 'test_l3'
-             --dut_model_num GT-AXE11000
-             --dut_sw_version 3.0.0.4.386_44266
-             --dut_hw_version 1.0
-             --dut_serial_num 12345678
+            ./test_l3.py\
+             --lfmgr 192.168.50.104\
+             --test_duration 20s\
+             --polling_interval 5s\
+             --upstream_port 1.1.eth2\
+             --radio 'radio==wiphy1,stations==1,ssid==ax88u_5g,ssid_pw==lf_ax88u_5g,security==wpa2\
+,wifi_settings==wifi_settings,wifi_mode==0,enable_flags==8021x_radius&&80211r_pmska_cache,\
+wifi_extra==key_mgmt&&WPA-EAP!!eap&&TLS!!identity&&testuser!!passwd&&testpasswd!!private_key&&/home/lanforge/client.p12!!\
+ca_cert&&/home/lanforge/ca.pem!!pk_password&&lanforge!!ieee80211w&&Disabled'\
+             --endp_type lf_udp\
+             --rates_are_totals\
+             --side_a_min_bps=256000\
+             --side_b_min_bps=300000000\
+             --test_rig ID_003\
+             --test_tag 'test_l3'\
+             --dut_model_num GT-AXE11000\
+             --dut_sw_version 3.0.0.4.386_44266\
+             --dut_hw_version 1.0\
+             --dut_serial_num 12345678\
              --log_level debug
 
         # Example : LAN-1927  WPA2-TTLS-Configuration
@@ -210,7 +209,7 @@ wifi_settings==wifi_settings,wifi_mode==0,enable_flags==8021x_radius,wifi_extra=
              --test_duration 20s
              --polling_interval 5s
              --upstream_port 1.1.eth2
-             --radio 'radio==wiphy1,stations==1,ssid==ax88u_5g,ssid_pw==[BLANK],security==wpa3,
+             --radio 'radio==wiphy1,stations==1,ssid==ax88u_5g,ssid_pw==[BLANK],security==wpa3,\
 wifi_settings==wifi_settings,wifi_mode==0,enable_flags==8021x_radius&&80211r_pmska_cache,wifi_extra==key_mgmt&&WPA-EAP!!pairwise&&GCMP-256!!group&&GCMP-256!!eap&&TLS!!identity&&testuser!!passwd&&testpasswd!!private_key&&/home/lanforge/client.p12!!ca_cert&&/home/lanforge/ca.pem!!pk_password&&lanforge!!ieee80211w&&Required'
              --endp_type lf_udp
              --rates_are_totals
@@ -223,94 +222,6 @@ wifi_settings==wifi_settings,wifi_mode==0,enable_flags==8021x_radius&&80211r_pms
              --dut_hw_version 1.0
              --dut_serial_num 12345678
              --log_level debug
-
-./test_l3.py
-             --lfmgr 192.168.101.137
-             --test_duration 2m
-             --polling_interval 5s
-             --upstream_port 1.1.eth2
-             --radio 'radio==1.2.wiphy0,stations==1,ssid==TP-Link_C672,ssid_pw==19719207,security==wpa2,wifi_settings==wifi_settings,wifi_mode==17,enable_flags==(wpa2_enable&&80211u_enable)'
-             --endp_type lf_udp
-             --rates_are_totals
-             --side_a_min_bps=200000000
-             --side_b_min_bps=300000000
-             --test_rig CT-US-008
-             --test_tag test_l3_a7
-             --dut_model_num TP-link
-             --dut_sw_version 3.0.0.4.386_44266
-             --dut_hw_version 1.0
-             --dut_serial_num 12345678
-             --log_level debug
-             --debug
-             --no_cleanup
-
-
-        # Example : Wifi 7 2G 802.11bgn-ETH
-            ./test_l3.py
-             --lfmgr 192.168.101.137
-             --test_duration 2m
-             --polling_interval 5s
-             --upstream_port 1.1.eth2
-             --tos BX,BE,VI,VO
-             --radio 'radio==1.2.wiphy0,stations==19,ssid==TPink_C672,ssid_pw==19719207,security==wpa2,wifi_settings==wifi_settings,wifi_mode==17,enable_flags==(wpa2_enable&&80211u_enable)'
-             --endp_type lf_udp
-             --rates_are_totals
-             --side_a_min_bps=200000000
-             --side_b_min_bps=300000000
-             --test_rig CT-US-008
-             --test_tag 'test_l3_a7'
-             --dut_model_num TP-link
-             --dut_sw_version 3.0.0.4.386_44266
-             --dut_hw_version 1.0
-             --dut_serial_num 12345678
-             --log_level debug
-             --debug
-             --no_cleanup
-
-        # Example : Wifi 7 5G 802.11bgn-ETH
-            ./test_l3.py
-             --lfmgr 192.168.101.137
-             --test_duration 2m
-             --polling_interval 5s
-             --upstream_port 1.1.eth2
-             --tos BX,BE,VI,VO
-             --radio 'radio==1.2.wiphy1,stations==19,ssid==TPink_C672_5G,ssid_pw==19719207,security==wpa2,wifi_settings==wifi_settings,wifi_mode==18,enable_flags==(wpa2_enable&&80211u_enable)'
-             --endp_type lf_udp
-             --rates_are_totals
-             --side_a_min_bps=200000000
-             --side_b_min_bps=300000000
-             --test_rig CT-US-008
-             --test_tag 'test_l3_a7'
-             --dut_model_num TP-link
-             --dut_sw_version 3.0.0.4.386_44266
-             --dut_hw_version 1.0
-             --dut_serial_num 12345678
-             --log_level debug
-             --debug
-             --no_cleanup
-
-        # Example : Wifi 7 6G 802.11bgn-ETH
-            ./test_l3.py
-             --lfmgr 192.168.101.137
-             --test_duration 2m
-             --polling_interval 5s
-             --upstream_port 1.1.eth2
-             --tos BX,BE,VI,VO
-             --radio 'radio==1.2.wiphy2,stations==19,ssid==TPink_C672_6G,ssid_pw==19719207,security==wpa3,wifi_settings==wifi_settings,wifi_mode==19,enable_flags==(use-wpa3&&80211u_enable)'
-             --endp_type lf_udp
-             --rates_are_totals
-             --side_a_min_bps=200000000
-             --side_b_min_bps=300000000
-             --test_rig CT-US-008
-             --test_tag 'test_l3_a7'
-             --dut_model_num TP-link
-             --dut_sw_version 3.0.0.4.386_44266
-             --dut_hw_version 1.0
-             --dut_serial_num 12345678
-             --log_level debug
-             --debug
-             --no_cleanup
-
 
 SCRIPT_CLASSIFICATION:  Creation & Runs Traffic
 
@@ -358,11 +269,9 @@ BK, BE, VI, VO:  Optional wifi related Tos Settings.  Or, use your preferred num
              is automatically sent to this Queue.
 
 <wifi_mode>:
-    Input       : Enum Val  : for list ,  telnet <mgr> 4001  , help add_profile
+    Input       : Enum Val  : Shown by nc_show_ports
 
-    Wifi_Mode
-    <pre options='wifi_mode'>
-    AUTO        |  0        #  Best Available
+    AUTO        |  0        #  802.11
     802.11a     |  1        #  802.11a
     b           |  2        #  802.11b
     g           |  3        #  802.11g
@@ -379,14 +288,8 @@ BK, BE, VI, VO:  Optional wifi related Tos Settings.  Or, use your preferred num
     bgnAX       | 13        #  802.11bgn-AX
     anAX        | 14        #  802.11an-AX
     aAX         | 15        #  802.11a-AX (6E disables /n and /ac)
-    abgn7       | 16        #  802.11abgn-EHT
-                            #     a/b/g/n/AC/AX/EHT (dual-band AX) support
-    bgn7        | 17        #  802.11bgn-EHT
-    an7         | 18        #  802.11an-EHT
-    a7          | 19        #  802.11a-EHT (6E disables /n and /ac)
 
-
-wifi_settings flags are currently defined as: for list ,  telnet <mgr> 4001  , help add_sta
+wifi_settings flags are currently defined as:
     wpa_enable           | 0x10         # Enable WPA
     custom_conf          | 0x20         # Use Custom wpa_supplicant config file.
     wep_enable           | 0x200        # Use wpa_supplicant configured for WEP encryption.
@@ -422,15 +325,6 @@ wifi_settings flags are currently defined as: for list ,  telnet <mgr> 4001  , h
     use-wpa3             | 0x10000000000 # Enable WPA-3 (SAE Personal) mode.
     use-bss-transition   | 0x80000000000 # Enable BSS transition.
     disable-twt          | 0x100000000000 # Disable TWT mode
-    disable-ofdma        | 0x200000000000 # Disable OFDMA mode
-    disable-obss-scan    | 0x400000000000 # Disable OBSS SCAN feature in supplicant.
-    ft-roam-over-ds      | 0x800000000000 # Roam over DS when AP supports it.
-    rrm-ignore-beacon-req | 0x1000000000000 # Ignore (reject) RRM Beacon measurement request.
-    use-owe               | 0x2000000000000 # Enable OWE
-    be320-enable          | 0x4000000000000 # Enable 320Mhz mode.
-    disable-mlo           | 0x8000000000000 # Disable OFDMA
-    ignore-edca           | 0x20000000000000 # Request station to ignore EDCA settings
-
 
 For wifi_extra_keys syntax :
     telnet <lanforge ip> 4001
@@ -617,13 +511,13 @@ Multicast traffic :
 
 STATUS: Functional
 
-VERIFIED_ON: MAY 2025,
-             GUI Version:  5.5.1
-             Kernel Version: 6.11.12+
+VERIFIED_ON:   18-JULY-2023,
+             GUI Version:  5.4.6
+             Kernel Version: 5.19.17+
 
 LICENSE:
           Free to distribute and modify. LANforge systems must be licensed.
-          Copyright 2025 Candela Technologies Inc
+          Copyright 2023 Candela Technologies Inc
 
 INCLUDE_IN_README: False
 
@@ -645,7 +539,6 @@ import pandas as pd
 import json
 import shutil
 
-import asyncio
 if sys.version_info[0] != 3:
     print("This script requires Python 3")
     exit(1)
@@ -659,8 +552,8 @@ lf_kpi_csv = importlib.import_module("py-scripts.lf_kpi_csv")
 lf_logger_config = importlib.import_module("py-scripts.lf_logger_config")
 LFUtils = importlib.import_module("py-json.LANforge.LFUtils")
 realm = importlib.import_module("py-json.realm")
-DeviceConfig = importlib.import_module("py-scripts.DeviceConfig")
 lf_attenuator = importlib.import_module("py-scripts.lf_atten_mod_test")
+modify_vap = importlib.import_module("py-scripts.modify_vap")
 lf_modify_radio = importlib.import_module("py-scripts.lf_modify_radio")
 lf_cleanup = importlib.import_module("py-scripts.lf_cleanup")
 Realm = realm.Realm
@@ -675,7 +568,6 @@ class L3VariableTime(Realm):
     query data for relevant LANforge ports and traffic pairs during
     the test, and generate reports upon completion.
     """
-
     def __init__(self,
                  endp_types,
                  args,
@@ -782,13 +674,8 @@ class L3VariableTime(Realm):
                  network_auth_type_list=None,
                  anqp_3gpp_cell_net_list=None,
                  ieee80211w_list=None,
-                 interopt_mode=False,
-                 endp_input_list=None,
-                 graph_input_list=None,
-                 real=False,
-                 expected_passfail_value=None,
-                 device_csv_name=None,
-                 group_name=None):
+                 interopt_mode=False
+                 ):
 
         self.eth_endps = []
         self.cx_names = []
@@ -835,9 +722,6 @@ class L3VariableTime(Realm):
         self.test_name = test_name
         self.ip = ip
         self.result_dir = result_dir
-        self.device_csv_name = device_csv_name
-        self.expected_passfail_value = expected_passfail_value
-        self.group_name = group_name
         # if it is a dataplane test the side_a is not none and an ethernet port
         if self.side_a is not None:
             self.dataplane = True
@@ -890,10 +774,6 @@ class L3VariableTime(Realm):
         self.no_cleanup = no_cleanup
         self.use_existing_station_lists = use_existing_station_lists
         self.existing_station_lists = existing_station_lists
-
-        # This is set after the 'build()' function is called, as the station
-        # names in newly-created station profiles (i.e. not existing) are only
-        # set *after creation*
         self.station_names_list = []
 
         self.wait_for_ip_sec = self.duration_time_to_seconds(wait_for_ip_sec)
@@ -1284,9 +1164,6 @@ class L3VariableTime(Realm):
         self.network_auth_type_list = network_auth_type_list if network_auth_type_list else []
         self.anqp_3gpp_cell_net_list = anqp_3gpp_cell_net_list if anqp_3gpp_cell_net_list else []
         self.ieee80211w_list = ieee80211w_list if ieee80211w_list else []
-        self.endp_input_list = endp_input_list
-        self.graph_input_list = graph_input_list
-        self.real = real
 
         # AP information import the module
         if self.ap_read and self.ap_module is not None:
@@ -1332,7 +1209,7 @@ class L3VariableTime(Realm):
         # if side_a is None then side_a is radios
         if not self.dataplane:
             for (
-                    _radio_,
+                    radio_,
                     ssid_,
                     ssid_password_,
                     ssid_security_,
@@ -1479,6 +1356,14 @@ class L3VariableTime(Realm):
                     station_profile.station_names.append(existing_station_list)
 
                 self.station_profiles.append(station_profile)
+
+            # Generate list of all stations, both created and existing
+            #
+            # Both are stored in 'self.station_profiles', but only
+            # the 'station_names' field is really valid for the existing
+            # stations profile
+            for station_profile in self.station_profiles:
+                self.station_names_list.extend(station_profile.station_names)
         else:
             # Dataplane style test
             #
@@ -1496,12 +1381,7 @@ class L3VariableTime(Realm):
         self.tcp_endps = None
 
     def _set_ports_up(self):
-        """Set all test ports up.
-
-        NOTE: This assumes the 'build()' function has successfully completed.
-              Gathering station names requires the stations to have already been
-              created, given the design of the StationProfile logic.
-        """
+        """Set all test ports up."""
         logger.info(f"Admin up upstream port and station port(s): {self.gather_port_eids()}")
 
         # Admin up upstream port
@@ -1527,10 +1407,6 @@ class L3VariableTime(Realm):
         """Check that all test ports connect to the DUT.
 
         Check includes phantom state, admin state, and IPv4 configured.
-
-        NOTE: This assumes the 'build()' function has successfully completed.
-              Gathering station names requires the stations to have already been
-              created, given the design of the StationProfile logic.
 
         Returns:
             int: 0 on success, non-zero on failure
@@ -1907,15 +1783,7 @@ class L3VariableTime(Realm):
             count += 1
             time.sleep(5)
 
-    def gather_port_eids(self) -> list:
-        """Query test object for list of ports used in test.
-
-        This includes the both the station(s) and the upstream.
-
-        NOTE: This assumes the 'build()' function has successfully completed.
-              Gathering station names requires the stations to have already been
-              created, given the design of the StationProfile logic.
-        """
+    def gather_port_eids(self):
         rv = [self.side_b]
 
         for station_profile in self.station_profiles:
@@ -2013,20 +1881,6 @@ class L3VariableTime(Realm):
                             self.cx_names.append(these_cx)
 
         self.cx_count = self.cx_profile.get_cx_count()
-
-        # Generate list of all stations, both created and existing
-        #
-        # Both are stored in 'self.station_profiles', but only
-        # the 'station_names' field is really valid for the existing
-        # stations profile
-        for station_profile in self.station_profiles:
-            self.station_names_list.extend(station_profile.station_names)
-
-        # with changes that came in around 3/2025 the station_names_list was moved
-        # from start to build, since test l3 can do a rebuild due to being able to run
-        # multiple iterations thus the station list would grow there is a need
-        # on build to remove duplicates
-        self.station_names_list = list(set(self.station_names_list))
 
         if self.dataplane:
             self._pass(
@@ -2137,11 +1991,12 @@ class L3VariableTime(Realm):
 
                 for atten_val in self.atten_vals:
                     if atten_val != -1:
-                        for _ in self.attenuators:
+                        for atten_idx in self.attenuators:
                             atten_mod_test = lf_attenuator.CreateAttenuator(
                                 host=self.lfclient_host, port=self.lfclient_port, serno='all', idx='all', val=atten_val, _debug_on=self.debug)
                             atten_mod_test.build()
-
+                    print("WAITING for 10 seconds to settle for IP address get function for running CX's")
+                    time.sleep(15)
                     logger.info(
                         "Starting multicast traffic (if any configured)")
                     self.multicast_profile.start_mc(debug_=self.debug)
@@ -5683,7 +5538,7 @@ class L3VariableTime(Realm):
         self.dut_sw_version = dut_sw_version
         self.dut_serial_num = dut_serial_num
 
-    def generate_report(self, config_devices=None, group_device_map=None):
+    def generate_report(self,):
         self.report.set_obj_html("Objective", "The Layer 3 Traffic Generation Test is designed to test the performance of the "
                                  "Access Point by running layer 3 Cross-Connect Traffic.  Layer-3 Cross-Connects represent a stream "
                                  "of data flowing through the system under test. A Cross-Connect (CX) is composed of two Endpoints, "
@@ -5702,29 +5557,15 @@ class L3VariableTime(Realm):
         self.report.build_table_title()
         self.report.test_setup_table(value="Device Under Test",
                                      test_setup_data=test_setup_info)
-        # For real devices when groups specified for configuration
-        if self.real and self.group_name:
-            group_names = ', '.join(config_devices.keys())
-            profile_names = ', '.join(config_devices.values())
-            configmap = "Groups:" + group_names + " -> Profiles:" + profile_names
-            test_input_info = {
-                "LANforge ip": self.lfmgr,
-                "LANforge port": self.lfmgr_port,
-                "Upstream": self.upstream_port,
-                "Test Duration": self.test_duration,
-                "Test Configuration": configmap,
-                "Polling Interval": self.polling_interval,
-                "Total No. of Devices": self.station_count,
-            }
-        else:
-            test_input_info = {
-                "LANforge ip": self.lfmgr,
-                "LANforge port": self.lfmgr_port,
-                "Upstream": self.upstream_port,
-                "Test Duration": self.test_duration,
-                "Polling Interval": self.polling_interval,
-                "Total No. of Devices": self.station_count,
-            }
+
+        test_input_info = {
+            "LANforge ip": self.lfmgr,
+            "LANforge port": self.lfmgr_port,
+            "Upstream": self.upstream_port,
+            "Test Duration": self.test_duration,
+            "Polling Interval": self.polling_interval,
+            "Total No. of Devices": self.station_count,
+        }
 
         self.report.set_table_title("Test Configuration")
         self.report.build_table_title()
@@ -5751,23 +5592,19 @@ class L3VariableTime(Realm):
             #     a/b/g/n/AC/AX (dual-band AX) support
             13: '802.11bgnAX',  # 802.11bgn-AX
             14: '802.11anAX',  # 802.11an-AX
-            15: '802.11aAX',  # 802.11a-AX (6E disables /n and /ac)
-            16: '802.11abgnEHT',  # 802.11abgn-EHT  a/b/g/n/AC/AX/EHT (dual-band AX) support
-            17: '802.11bgnEHT',  # 802.11bgn-EHT
-            18: '802.11anEHT',  # 802.11an-ETH
-            19: '802.11aBE',  # 802.11a-EHT (6E disables /n and /ac)
+            15: '802.11aAX'  # 802.11a-AX (6E disables /n and /ac)
         }
 
         for (
                 radio_,
                 ssid_,
-                _ssid_password_,  # do not print password
+                ssid_password_,  # do not print password
                 ssid_security_,
                 mode_,
                 wifi_enable_flags_list_,
-                _reset_port_enable_,
-                _reset_port_time_min_,
-                _reset_port_time_max_) in zip(
+                reset_port_enable_,
+                reset_port_time_min_,
+                reset_port_time_max_) in zip(
                 self.radio_name_list,
                 self.ssid_list,
                 self.ssid_password_list,
@@ -5855,132 +5692,30 @@ class L3VariableTime(Realm):
                 self.report.set_csv_filename(graph_png)
                 self.report.move_csv_file()
 
-                # For real devices appending the required data for pass fail criteria
-                if self.real:
-                    up, down, off_up, off_down = [], [], [], []
-                    for i in self.client_dict_A[tos]['ul_A']:
-                        up.append(int(i) / 1000000)
-                    for i in self.client_dict_A[tos]['dl_A']:
-                        down.append(int(i) / 1000000)
-                    for i in self.client_dict_A[tos]['offered_upload_rate_A']:
-                        off_up.append(int(i) / 1000000)
-                    for i in self.client_dict_A[tos]['offered_download_rate_A']:
-                        off_down.append(int(i) / 1000000)
-                    # if either 'expected_passfail_value' or 'device_csv_name' is provided for pass/fail evaluation
-                    if self.expected_passfail_value or self.device_csv_name:
-                        test_input_list, pass_fail_list = self.get_pass_fail_list(tos, up, down)
+                tos_dataframe_A = {
+                    " Client Alias ": self.client_dict_A[tos]['resource_alias_A'],
+                    " Host eid ": self.client_dict_A[tos]['resource_eid_A'],
+                    " Host Name ": self.client_dict_A[tos]['resource_host_A'],
+                    " Device Type / Hw Ver ": self.client_dict_A[tos]['resource_hw_ver_A'],
+                    " Endp Name": self.client_dict_A[tos]["clients_A"],
+                    # TODO : port A being set to many times
+                    " Port Name ": self.client_dict_A[tos]['port_A'],
+                    " Mode ": self.client_dict_A[tos]['mode_A'],
+                    " Mac ": self.client_dict_A[tos]['mac_A'],
+                    " SSID ": self.client_dict_A[tos]['ssid_A'],
+                    " Channel ": self.client_dict_A[tos]['channel_A'],
+                    " Type of traffic ": self.client_dict_A[tos]['traffic_type_A'],
+                    " Traffic Protocol ": self.client_dict_A[tos]['traffic_protocol_A'],
+                    " Offered Upload Rate Per Client": self.client_dict_A[tos]['offered_upload_rate_A'],
+                    " Offered Download Rate Per Client": self.client_dict_A[tos]['offered_download_rate_A'],
+                    " Upload Rate Per Client": self.client_dict_A[tos]['ul_A'],
+                    " Download Rate Per Client": self.client_dict_A[tos]['dl_A'],
+                    " Drop Percentage (%)": self.client_dict_A[tos]['download_rx_drop_percent_A']
+                }
 
-                if self.real:
-                    # When groups and profiles specifed for configuration
-                    if self.group_name:
-                        for key, val in group_device_map.items():
-                            # Generating Dataframe when Groups with their profiles and pass_fail case is specified
-                            if self.expected_passfail_value or self.device_csv_name:
-                                dataframe = self.generate_dataframe(
-                                    val,
-                                    self.client_dict_A[tos]['resource_alias_A'],
-                                    self.client_dict_A[tos]['resource_eid_A'],
-                                    self.client_dict_A[tos]['resource_host_A'],
-                                    self.client_dict_A[tos]['resource_hw_ver_A'],
-                                    self.client_dict_A[tos]["clients_A"],
-                                    self.client_dict_A[tos]['port_A'],
-                                    self.client_dict_A[tos]['mode_A'],
-                                    self.client_dict_A[tos]['mac_A'],
-                                    self.client_dict_A[tos]['ssid_A'],
-                                    self.client_dict_A[tos]['channel_A'],
-                                    self.client_dict_A[tos]['traffic_type_A'],
-                                    self.client_dict_A[tos]['traffic_protocol_A'],
-                                    off_up,
-                                    off_down,
-                                    up,
-                                    down,
-                                    test_input_list,
-                                    self.client_dict_A[tos]['download_rx_drop_percent_A'],
-                                    pass_fail_list)
-                            # Generating Dataframe for groups when pass_fail case is not specified
-                            else:
-                                dataframe = self.generate_dataframe(
-                                    val,
-                                    self.client_dict_A[tos]['resource_alias_A'],
-                                    self.client_dict_A[tos]['resource_eid_A'],
-                                    self.client_dict_A[tos]['resource_host_A'],
-                                    self.client_dict_A[tos]['resource_hw_ver_A'],
-                                    self.client_dict_A[tos]["clients_A"],
-                                    self.client_dict_A[tos]['port_A'],
-                                    self.client_dict_A[tos]['mode_A'],
-                                    self.client_dict_A[tos]['mac_A'],
-                                    self.client_dict_A[tos]['ssid_A'],
-                                    self.client_dict_A[tos]['channel_A'],
-                                    self.client_dict_A[tos]['traffic_type_A'],
-                                    self.client_dict_A[tos]['traffic_protocol_A'],
-                                    off_up,
-                                    off_down,
-                                    up,
-                                    down,
-                                    [],
-                                    self.client_dict_A[tos]['download_rx_drop_percent_A'],
-                                    [],)
-                            # When the client exists in either group.
-                            if dataframe:
-                                self.report.set_obj_html("", "Group: {}".format(key))
-                                self.report.build_objective()
-                                dataframe1 = pd.DataFrame(dataframe)
-                                self.report.set_table_dataframe(dataframe1)
-                                self.report.build_table()
-                    else:
-                        tos_dataframe_A = {
-                            " Client Alias ": self.client_dict_A[tos]['resource_alias_A'],
-                            " Host eid ": self.client_dict_A[tos]['resource_eid_A'],
-                            " Host Name ": self.client_dict_A[tos]['resource_host_A'],
-                            " Device Type / Hw Ver ": self.client_dict_A[tos]['resource_hw_ver_A'],
-                            " Endp Name": self.client_dict_A[tos]["clients_A"],
-                            # TODO : port A being set to many times
-                            " Port Name ": self.client_dict_A[tos]['port_A'],
-                            " Mode ": self.client_dict_A[tos]['mode_A'],
-                            " Mac ": self.client_dict_A[tos]['mac_A'],
-                            " SSID ": self.client_dict_A[tos]['ssid_A'],
-                            " Channel ": self.client_dict_A[tos]['channel_A'],
-                            " Type of traffic ": self.client_dict_A[tos]['traffic_type_A'],
-                            " Traffic Protocol ": self.client_dict_A[tos]['traffic_protocol_A'],
-                            " Offered Upload Rate Per Client": self.client_dict_A[tos]['offered_upload_rate_A'],
-                            " Offered Download Rate Per Client": self.client_dict_A[tos]['offered_download_rate_A'],
-                            " Upload Rate Per Client": self.client_dict_A[tos]['ul_A'],
-                            " Download Rate Per Client": self.client_dict_A[tos]['dl_A'],
-                            " Drop Percentage (%)": self.client_dict_A[tos]['download_rx_drop_percent_A'],
-                        }
-                        # When pass_Fail criteria specified
-                        if self.expected_passfail_value or self.device_csv_name:
-                            tos_dataframe_A[" Expected " + 'Download' + " Rate"] = [float(x) * 10**6 for x in test_input_list]
-                            tos_dataframe_A[" Status "] = pass_fail_list
-
-                        dataframe3 = pd.DataFrame(tos_dataframe_A)
-                        self.report.set_table_dataframe(dataframe3)
-                        self.report.build_table()
-
-                # For virtual clients
-                else:
-                    tos_dataframe_A = {
-                        " Client Alias ": self.client_dict_A[tos]['resource_alias_A'],
-                        " Host eid ": self.client_dict_A[tos]['resource_eid_A'],
-                        " Host Name ": self.client_dict_A[tos]['resource_host_A'],
-                        " Device Type / Hw Ver ": self.client_dict_A[tos]['resource_hw_ver_A'],
-                        " Endp Name": self.client_dict_A[tos]["clients_A"],
-                        " Port Name ": self.client_dict_A[tos]['port_A'],
-                        " Mode ": self.client_dict_A[tos]['mode_A'],
-                        " Mac ": self.client_dict_A[tos]['mac_A'],
-                        " SSID ": self.client_dict_A[tos]['ssid_A'],
-                        " Channel ": self.client_dict_A[tos]['channel_A'],
-                        " Type of traffic ": self.client_dict_A[tos]['traffic_type_A'],
-                        " Traffic Protocol ": self.client_dict_A[tos]['traffic_protocol_A'],
-                        " Offered Upload Rate Per Client": self.client_dict_A[tos]['offered_upload_rate_A'],
-                        " Offered Download Rate Per Client": self.client_dict_A[tos]['offered_download_rate_A'],
-                        " Upload Rate Per Client": self.client_dict_A[tos]['ul_A'],
-                        " Download Rate Per Client": self.client_dict_A[tos]['dl_A'],
-                        " Drop Percentage (%)": self.client_dict_A[tos]['download_rx_drop_percent_A'],
-                    }
-                    dataframe3 = pd.DataFrame(tos_dataframe_A)
-                    self.report.set_table_dataframe(dataframe3)
-                    self.report.build_table()
+                dataframe3 = pd.DataFrame(tos_dataframe_A)
+                self.report.set_table_dataframe(dataframe3)
+                self.report.build_table()
 
         # TODO both client_dict_A and client_dict_B contains the same information
         for tos in tos_list:
@@ -6086,112 +5821,6 @@ class L3VariableTime(Realm):
         if platform.system() == 'Linux':
             self.report.write_pdf_with_timestamp(_page_size='A3', _orientation='Landscape')
 
-    def generate_dataframe(self, groupdevlist, devclient, devhosteid, devhostname, devdevicetype, devendpname, devportname, devmode, devmac, devssid, devchannel,
-                           devtypeoftraffic, devprotocol, devoffupload, devoffdownload, devobsupload, devobsdownload, devExpected, devdrop, devstatus):
-        """
-        Creates a separate DataFrame for each group of devices.
-
-        Returns:
-            DataFrame: A DataFrame for each device group.
-            Returns None if neither device in a group is configured.
-        """
-        device_type = []
-        client = []
-        hosteid = []
-        hostname = []
-        endpname = []
-        portname = []
-        ssid = []
-        mac = []
-        channel = []
-        mode = []
-        typeoftraffic = []
-        protocol = []
-        offdownload = []
-        obsdownload = []
-        offupload = []
-        obsupload = []
-        input_list = []
-        drop = []
-        statuslist = []
-        interop_tab_data = self.json_get('/adb/')["devices"]
-        for i in range(len(devclient)):
-            for j in groupdevlist:
-                if j == devhostname[i] and devclient[i].split('_')[-1] != 'Android':
-                    client.append(devclient[i])
-                    hosteid.append(devhosteid[i])
-                    hostname.append(devhostname[i])
-                    device_type.append(devdevicetype[i])
-                    endpname.append(devendpname[i])
-                    portname.append(devportname[i])
-                    ssid.append(devssid[i])
-                    mac.append(devmac[i])
-                    channel.append(devchannel[i])
-                    mode.append(devmode[i])
-                    typeoftraffic.append(devtypeoftraffic[i])
-                    offdownload.append(devoffdownload[i])
-                    obsdownload.append(devobsdownload[i])
-                    offupload.append(devoffupload[i])
-                    obsupload.append(devobsupload[i])
-                    protocol.append(devprotocol[i])
-                    drop.append(devdrop[i])
-                    if self.expected_passfail_value or self.device_csv_name:
-                        statuslist.append(devstatus[i])
-                        input_list.append(devExpected[i])
-
-                else:
-                    for dev in interop_tab_data:
-                        for item in dev.values():
-                            if item['resource-id'] == devclient[i].split('_')[0] and j == item['name'].split('.')[2]:
-                                client.append(devclient[i])
-                                hosteid.append(devhosteid[i])
-                                hostname.append(devhostname[i])
-                                device_type.append(devdevicetype[i])
-                                endpname.append(devendpname[i])
-                                portname.append(devportname[i])
-                                ssid.append(devssid[i])
-                                mac.append(devmac[i])
-                                channel.append(devchannel[i])
-                                mode.append(devmode[i])
-                                typeoftraffic.append(devtypeoftraffic[i])
-                                offdownload.append(devoffdownload[i])
-                                obsdownload.append(devobsdownload[i])
-                                offupload.append(devoffupload[i])
-                                obsupload.append(devobsupload[i])
-                                protocol.append(devprotocol[i])
-                                drop.append(devdrop[i])
-                                if self.expected_passfail_value or self.device_csv_name:
-                                    statuslist.append(devstatus[i])
-                                    input_list.append(devExpected[i])
-        # Checks if either device in the group is configured
-        if len(client) != 0:
-            dataframe = {
-                " Client Alias ": client,
-                " Host eid ": hosteid,
-                " Host Name ": hostname,
-                " Device Type / Hw Ver ": device_type,
-                " Endp Name": endpname,
-                " Port Name ": portname,
-                " Mode ": mode,
-                " Mac ": mac,
-                " SSID ": ssid,
-                " Channel ": channel,
-                " Type of traffic ": typeoftraffic,
-                " Traffic Protocol ": protocol,
-                " Offered Upload Rate(bps) Per Client": [float(x) * 1000000 for x in offupload],
-                " Offered Download Rate (bps) Per Client": [float(x) * 1000000 for x in offdownload],
-                " Upload Rate (bps) Per Client": [float(x) * 1000000 for x in obsupload],
-                " Download Rate (bps) Per Client": [float(x) * 1000000 for x in obsdownload],
-                " Drop Percentage (%)": drop
-            }
-            if self.expected_passfail_value or self.device_csv_name:
-                dataframe[" Expected " + 'Download' + " Rate (bps)"] = [float(x) * 1000000 for x in input_list]
-                dataframe[" Status "] = statuslist
-            return dataframe
-        # if neither device in the group is configured returns 0
-        else:
-            return None
-
     def copy_reports_to_home_dir(self):
         """Copy generated reports to home directory when run in WebGUI mode."""
         curr_path = self.result_dir
@@ -6220,73 +5849,6 @@ class L3VariableTime(Realm):
         df1.to_csv('{}/overall_multicast_throughput.csv'.format(self.result_dir), index=False)
 
         self.copy_reports_to_home_dir()
-
-    def get_pass_fail_list(self, tos, up, down):
-        res_list = []
-        test_input_list = []
-        pass_fail_list = []
-        # When device_csv_name specified
-        interop_tab_data = self.json_get('/adb/')["devices"]
-        if self.expected_passfail_value == '' or self.expected_passfail_value is None:
-            for client in self.client_dict_A[tos]['resource_alias_A']:
-                # Check if the client type (second word in "1.15 android samsungmob") is 'android'
-                if client.split('_')[-1] != 'Android':
-                    res_list.append('_'.join(client.split('_')[1:-1]))
-                else:
-                    for dev in interop_tab_data:
-                        for item in dev.values():
-                            # Extract the username from the client string (e.g., 'samsungmob' from "1.15 android samsungmob")
-                            if item['resource-id'] == client.split('_')[0]:
-                                res_list.append(item['name'].split('.')[2])
-                                break
-            if self.device_csv_name is None:
-                self.device_csv_name = 'device.csv'
-
-            with open(self.device_csv_name, mode='r') as file:
-                reader = csv.DictReader(file)
-                rows = list(reader)
-            # Append pass fail value for specific device from csv
-            for device in res_list:
-                found = False
-                for row in rows:
-                    for endp in self.endp_input_list:
-                        if row['DeviceList'] == device and row[endp + ' Mbps'].strip() != '':
-                            test_input_list.append(row[endp + ' Mbps'])
-                            found = True
-                            break
-                # Append default value only if it does not exist in the CSV
-                if not found:
-                    logger.info(f'Pass/Fail threshold for device {device} not found in the CSV. Using default threshold of 5 Mbps.')
-                    test_input_list.append(5)
-
-        # When expected_passfail_value argument specified , common value appended for all devices
-        else:
-            test_input_list = [self.expected_passfail_value for val in range(len(self.client_dict_A[tos]['resource_alias_A']))]
-        # Comparing the received rate against the pass/fail threshold rate
-        for k in range(len(test_input_list)):
-            if float(test_input_list[k]) <= float(down[k]):
-                pass_fail_list.append('PASS')
-            else:
-                pass_fail_list.append('FAIL')
-        return test_input_list, pass_fail_list
-
-
-# Converting the upstream_port to IP address for configuration purposes
-def change_port_to_ip(upstream_port, lfclient_host, lfclient_port):
-    if upstream_port.count('.') != 3:
-        target_port_list = LFUtils.name_to_eid(upstream_port)
-        shelf, resource, port, _ = target_port_list
-        try:
-            realm_obj = Realm(lfclient_host=lfclient_host, lfclient_port=lfclient_port)
-            target_port_ip = realm_obj.json_get(f'/port/{shelf}/{resource}/{port}?fields=ip')['interface']['ip']
-            upstream_port = target_port_ip
-        except Exception:
-            logging.warning(f'The upstream port is not an ethernet port. Proceeding with the given upstream_port {upstream_port}.')
-        logging.info(f"Upstream port IP {upstream_port}")
-    else:
-        logging.info(f"Upstream port IP {upstream_port}")
-
-    return upstream_port
 
 
 # Only used by argparser, so safe to exit in this function
@@ -6368,243 +5930,6 @@ def configure_reporting(local_lf_report_dir: str,
     return report, kpi_csv, csv_outfile
 
 
-def query_real_clients(args):
-    endp_input_list = []
-    graph_input_list = []
-    group_device_map = {}
-    traffic_type = args.endp_type.split(',')
-    if args.lfmgr_port:
-        json_port = args.lfmgr_port
-    else:
-        json_port = 8080
-    upstream_port_ip = change_port_to_ip(args.upstream_port, args.lfmgr, json_port)
-    config_obj = DeviceConfig.DeviceConfig(lanforge_ip=args.lfmgr, file_name=args.file_name, wait_time=args.wait_time)
-    config_devices = {}
-    # group_device_map = {}
-    config_dict = {
-        'ssid': args.ssid,
-        'passwd': args.passwd,
-        'enc': args.security,
-        'eap_method': args.eap_method,
-        'eap_identity': args.eap_identity,
-        'ieee80211': args.ieee8021x,
-        'ieee80211u': args.ieee80211u,
-        'ieee80211w': args.ieee80211w,
-        'enable_pkc': args.enable_pkc,
-        'bss_transition': args.bss_transition,
-        'power_save': args.power_save,
-        'disable_ofdma': args.disable_ofdma,
-        'roam_ft_ds': args.roam_ft_ds,
-        'key_management': args.key_management,
-        'pairwise': args.pairwise,
-        'private_key': args.private_key,
-        'ca_cert': args.ca_cert,
-        'client_cert': args.client_cert,
-        'pk_passwd': args.pk_passwd,
-        'pac_file': args.pac_file,
-        'server_ip': upstream_port_ip,
-    }
-    if not args.expected_passfail_value and args.device_csv_name is None:
-        config_obj.device_csv_file(csv_name="device.csv")
-    # Configuration of devices with groups and profiles
-    if args.group_name and args.file_name and args.profile_name:
-        selected_groups = args.group_name.split(',')
-        selected_profiles = args.profile_name.split(',')
-        for i in range(len(selected_groups)):
-            config_devices[selected_groups[i]] = selected_profiles[i]
-        config_obj.initiate_group()
-        group_device_map = config_obj.get_groups_devices(data=selected_groups, groupdevmap=True)
-        # Configuration of group of devices for the corresponding profiles
-        args.device_list = [','.join(i for i in asyncio.run(config_obj.connectivity(config_devices, upstream=upstream_port_ip)))]
-    elif args.device_list:
-        all_devices = config_obj.get_all_devices()
-        if args.group_name is None and args.file_name is None and args.profile_name is None:
-            dev_list = args.device_list[0].split(',')
-            # Configuration of devices with SSID,Password and Security when device list is specified
-            if args.config:
-                args.device_list = [','.join(i for i in asyncio.run(config_obj.connectivity(device_list=dev_list, wifi_config=config_dict)))]
-
-    elif args.device_list is None and args.config:
-        all_devices = config_obj.get_all_devices()
-        device_list = []
-        for device in all_devices:
-            if device["type"] != 'laptop':
-                device_list.append(device["shelf"] + '.' + device["resource"] + " " + device["serial"])
-            else:
-                device_list.append(device["shelf"] + '.' + device["resource"] + " " + device["hostname"])
-        logger.info("Available devices: %s", device_list)
-        args.device_list = [input("Enter the desired resources to run the test:")]
-        dev1_list = args.device_list[0].split(',')
-        # Configuration of devices with SSID , Password and Security when the device list is not specified
-        if args.config:
-            args.device_list = [','.join(i for i in asyncio.run(config_obj.connectivity(device_list=dev1_list, wifi_config=config_dict)))]
-    all = config_obj.get_all_devices()
-    logger.info("All devices %s Device List %s", all, args.device_list)
-    configdev_list = []
-    configure_list = []
-    if args.dowebgui and args.group_name:
-        configdev_list = args.device_list[0].split(',')
-        for device in all:
-            for config in configdev_list:
-                if device['os'] == 'Android' and device['eid'] == config:
-                    configure_list.append(config + " " + device['os'] + " " + device['user-name'])
-                elif device['shelf'] + '.' + device['resource'] == config:
-                    configure_list.append(config + " " + device['os'] + " " + device['hostname'])
-
-    logger.info("configure list %s", configure_list)
-    # Fetching real devices list
-    port_eid_list = []
-    same_eid_list = []
-    original_port_list = []
-    working_resources_list = []
-    eid_list = []
-    windows_list = []
-    devices_available = []
-    linux_list = []
-    mac_list = []
-    android_list = []
-    mac_id1_list = []
-    user_list = []
-    response = config_obj.json_get("/resource/all")
-
-    if "resources" not in response.keys():
-        logger.error("There are no real devices.")
-        exit(1)
-
-    for key, value in response.items():
-        if key == "resources":
-            for element in value:
-                for (_, b) in element.items():
-
-                    # Check if the resource is not phantom
-                    if not b['phantom']:
-                        working_resources_list.append(b["hw version"])
-
-                        # Categorize based on hw version (type of device)
-                        if "Win" in b['hw version']:
-                            eid_list.append(b['eid'])
-                            windows_list.append(b['hw version'])
-                            devices_available.append(b['eid'] + " " + 'Win' + " " + b['hostname'])
-                        elif "Linux" in b['hw version']:
-                            if 'ct' not in b['hostname']:
-                                if 'lf' not in b['hostname']:
-                                    eid_list.append(b['eid'])
-                                    linux_list.append(b['hw version'])
-                                    devices_available.append(b['eid'] + " " + 'Lin' + " " + b['hostname'])
-                        elif "Apple" in b['hw version']:
-                            eid_list.append(b['eid'])
-                            mac_list.append(b['hw version'])
-                            devices_available.append(b['eid'] + " " + 'Mac' + " " + b['hostname'])
-                        else:
-                            eid_list.append(b['eid'])
-                            android_list.append(b['hw version'])
-                            devices_available.append(b['eid'] + " " + 'android' + " " + b['user'])
-
-    response_port = config_obj.json_get("/port/all")
-    if "interfaces" not in response_port.keys():
-        logger.error("Error: 'interfaces' key not found in port data")
-        exit(1)
-    for interface in response_port['interfaces']:
-        for port, port_data in interface.items():
-
-            # Check conditions for non-phantom ports
-            if not port_data['phantom'] and not port_data['down'] and port_data['parent dev'] == "wiphy0" and port_data['alias'] != 'p2p0':
-                # Check if the port's parent device matches with an eid in the eid_list
-                for id in eid_list:
-                    if id + '.' in port:
-                        original_port_list.append(port)
-                        port_eid_list.append(str(LFUtils.name_to_eid(port)[0]) + '.' + str(LFUtils.name_to_eid(port)[1]))
-                        mac_id1_list.append(str(LFUtils.name_to_eid(port)[0]) + '.' + str(LFUtils.name_to_eid(port)[1]) + ' ' + port_data['mac'])
-
-    for i in range(len(eid_list)):
-        for j in range(len(port_eid_list)):
-            if eid_list[i] == port_eid_list[j]:
-                same_eid_list.append(eid_list[i])
-
-    same_eid_list = [_eid + ' ' for _eid in same_eid_list]
-    for eid in same_eid_list:
-        for device in devices_available:
-            if eid in device:
-                user_list.append(device)
-    if args.device_list is None and not args.config and args.group_name is None:
-        logger.info("AVAILABLE DEVICES TO RUN TEST : {}".format(user_list))
-        args.device_list = [input("Enter the desired resources to run the test:")]
-
-    if args.device_list[0] == '' or args.device_list[0] == ',':
-        logger.info("Device list is empty")
-        exit(1)
-    if args.device_list:
-        csv_device_list = args.device_list[0].split(',')
-        for endp in traffic_type:
-            endp_input_list.append('L3_' + endp.split('_')[1].upper() + '_DL')
-        for _ in range(len(csv_device_list)):
-            for endp in traffic_type:
-                graph_input_list.append('L3_' + endp.split('_')[1].upper() + '_DL')
-    sample_list = []
-    if args.device_list:
-        for interface in response_port['interfaces']:
-            for port, port_data in interface.items():
-                if not port_data['phantom'] and not port_data['down'] and port_data['parent dev'] == "wiphy0" and port_data['alias'] != 'p2p0':
-                    port_list = port.split('.')
-                    for device in args.device_list[0].split(','):
-                        if (port_list[0] + '.' + port_list[1]) == device:
-                            sample_list.append([port])
-        if sample_list == []:
-            logger.info("Selected devices are not available")
-            exit(1)
-        args.existing_station_list = sample_list
-        args.use_existing_station_list = True
-    return endp_input_list, graph_input_list, config_devices, group_device_map
-
-
-def validate_args(args):
-    if args.real and args.expected_passfail_value and args.device_csv_name:
-        logger.error("Specify either --expected_passfail_value or --device_csv_name")
-        exit(1)
-    if args.real and (args.use_existing_station_list or args.use_existing_station_list):
-        logger.error("For real devices --use_existing_station_list and --use_existing_station_list are not needed")
-        exit(1)
-    elif args.real and args.group_name and args.profile_name and args.file_name and args.device_list:
-        logger.error("Either --group_name or --device_list should be entered not both")
-        exit(1)
-    elif args.real and args.ssid and args.profile_name:
-        logger.error("Either --ssid or --profile_name should be given")
-        exit(1)
-    elif args.real and args.file_name and (args.group_name is None or args.profile_name is None):
-        logger.error("Please enter the correct set of arguments")
-        exit(1)
-    # When configuration specified for real devices using --config
-    if args.real and args.config:
-        if args.ssid and args.security and args.security.lower() == 'open' and (args.passwd is None or args.passwd == ''):
-            args.passwd = '[BLANK]'
-        if args.ssid is None or args.passwd is None or args.passwd == '':
-            logger.error('For configuration need to Specify --ssid , --passwd(Optional for "open" type security) , --security')
-            exit(1)
-        elif args.ssid and args.passwd:
-            if args.security is None:
-                logger.error('--security must be provided when --ssid and --passwd specified')
-                exit(1)
-            elif args.security.lower() == 'open' and args.passwd != '[BLANK]':
-                logger.error("For a open type security there will be no password or the password should be left blank (i.e., set to '' or [BLANK]).")
-                exit(1)
-
-        elif args.ssid and args.passwd == '[BLANK]' and args.security and args.security.lower() != 'open':
-            logger.error('Please provide valid --passwd and --security configuration')
-            exit(1)
-    if args.group_name:
-        selected_groups = args.group_name.split(',')
-    else:
-        selected_groups = []
-    if args.profile_name:
-        selected_profiles = args.profile_name.split(',')
-    else:
-        selected_profiles = []
-
-    if len(selected_groups) != len(selected_profiles):
-        logger.error("Number of groups should match number of profiles")
-        exit(1)
-
-
 def parse_args():
     parser = argparse.ArgumentParser(
         prog='test_l3.py',
@@ -6632,7 +5957,6 @@ PURPOSE: The Layer 3 Traffic Generation Test is designed to test the performance
          * Supports creating user-specified amount stations on multiple radios
          * Supports configuring upload and download requested rates and PDU sizes.
          * Supports generating connections with different ToS values.
-         * Supports generating KPI data
          * Supports generating tcp and/or UDP traffic types.
          * Supports iterating over different PDU sizes
          * Supports iterating over different requested tx rates (configurable as total or per-connection value)
@@ -6879,73 +6203,6 @@ wifi_settings==wifi_settings,wifi_mode==0,enable_flags==8021x_radius&&80211r_pms
              --dut_serial_num 12345678
              --log_level debug
 
-        # Example : Wifi 7 2G 802.11bgn-ETH
-            ./test_l3.py
-             --lfmgr 192.168.101.137
-             --test_duration 2m
-             --polling_interval 5s
-             --upstream_port 1.1.eth2
-             --tos BX,BE,VI,VO
-             --radio 'radio==1.2.wiphy0,stations==19,ssid==TPink_C672,ssid_pw==19719207,security==wpa2,wifi_settings==wifi_settings,wifi_mode==17,enable_flags==(wpa2_enable&&80211u_enable)'
-             --endp_type lf_udp
-             --rates_are_totals
-             --side_a_min_bps=200000000
-             --side_b_min_bps=300000000
-             --test_rig CT-US-008
-             --test_tag 'test_l3_a7'
-             --dut_model_num TP-link
-             --dut_sw_version 3.0.0.4.386_44266
-             --dut_hw_version 1.0
-             --dut_serial_num 12345678
-             --log_level debug
-             --debug
-             --no_cleanup
-
-        # Example : Wifi 7 5G 802.11bgn-ETH
-            ./test_l3.py
-             --lfmgr 192.168.101.137
-             --test_duration 2m
-             --polling_interval 5s
-             --upstream_port 1.1.eth2
-             --tos BX,BE,VI,VO
-             --radio 'radio==1.2.wiphy1,stations==19,ssid==TPink_C672_5G,ssid_pw==19719207,security==wpa2,wifi_settings==wifi_settings,wifi_mode==18,enable_flags==(wpa2_enable&&80211u_enable)'
-             --endp_type lf_udp
-             --rates_are_totals
-             --side_a_min_bps=200000000
-             --side_b_min_bps=300000000
-             --test_rig CT-US-008
-             --test_tag 'test_l3_a7'
-             --dut_model_num TP-link
-             --dut_sw_version 3.0.0.4.386_44266
-             --dut_hw_version 1.0
-             --dut_serial_num 12345678
-             --log_level debug
-             --debug
-             --no_cleanup
-
-        # Example : Wifi 7 6G 802.11bgn-ETH
-            ./test_l3.py
-             --lfmgr 192.168.101.137
-             --test_duration 2m
-             --polling_interval 5s
-             --upstream_port 1.1.eth2
-             --tos BX,BE,VI,VO
-             --radio 'radio==1.2.wiphy2,stations==19,ssid==TPink_C672_6G,ssid_pw==19719207,security==wpa3,wifi_settings==wifi_settings,wifi_mode==19,enable_flags==(use-wpa3&&80211u_enable)'
-             --endp_type lf_udp
-             --rates_are_totals
-             --side_a_min_bps=200000000
-             --side_b_min_bps=300000000
-             --test_rig CT-US-008
-             --test_tag 'test_l3_a7'
-             --dut_model_num TP-link
-             --dut_sw_version 3.0.0.4.386_44266
-             --dut_hw_version 1.0
-             --dut_serial_num 12345678
-             --log_level debug
-             --debug
-             --no_cleanup
-
-
 SCRIPT_CLASSIFICATION:  Creation & Runs Traffic
 
 SCRIPT_CATEGORIES:  Performance, Functional,  KPI Generation,  Report Generation
@@ -6992,12 +6249,9 @@ BK, BE, VI, VO:  Optional wifi related Tos Settings.  Or, use your preferred num
              is automatically sent to this Queue.
 
 <wifi_mode>:
-    Input       : Enum Val  : for list ,  telnet <mgr> 4001  , help add_profile
-
-    Wifi_Mode
     Input       : Enum Val  : Shown by nc_show_ports
-    <pre options='wifi_mode'>
-    AUTO        |  0        #  Best Available
+
+    AUTO        |  0        #  802.11
     802.11a     |  1        #  802.11a
     b           |  2        #  802.11b
     g           |  3        #  802.11g
@@ -7014,58 +6268,68 @@ BK, BE, VI, VO:  Optional wifi related Tos Settings.  Or, use your preferred num
     bgnAX       | 13        #  802.11bgn-AX
     anAX        | 14        #  802.11an-AX
     aAX         | 15        #  802.11a-AX (6E disables /n and /ac)
-    abgn7       | 16        #  802.11abgn-EHT
-                            #     a/b/g/n/AC/AX/EHT (dual-band AX) support
-    bgn7        | 17        #  802.11bgn-EHT
-    an7         | 18        #  802.11an-EHT
-    a7          | 19        #  802.11a-EHT (6E disables /n and /ac)
 
-
-
-wifi_settings flags are currently defined as: for list ,  telnet <mgr> 4001  , help add_sta
+wifi_settings flags are currently defined as:
     wpa_enable           | 0x10         # Enable WPA
-    custom_conf          | 0x20         # Use Custom wpa_supplicant config file.
-    wep_enable           | 0x200        # Use wpa_supplicant configured for WEP encryption.
-    wpa2_enable          | 0x400        # Use wpa_supplicant configured for WPA2 encryption.
-    ht40_disable         | 0x800        # Disable HT-40 even if hardware and AP support it.
-    scan_ssid            | 0x1000       # Enable SCAN-SSID flag in wpa_supplicant.
-    passive_scan         | 0x2000       # Use passive scanning (don't send probe requests).
+    # Use Custom wpa_supplicant config file.
+    custom_conf          | 0x20
+    # Use wpa_supplicant configured for WEP encryption.
+    wep_enable           | 0x200
+    # Use wpa_supplicant configured for WPA2 encryption.
+    wpa2_enable          | 0x400
+    # Disable HT-40 even if hardware and AP support it.
+    ht40_disable         | 0x800
+    # Enable SCAN-SSID flag in wpa_supplicant.
+    scan_ssid            | 0x1000
+    # Use passive scanning (don't send probe requests).
+    passive_scan         | 0x2000
     disable_sgi          | 0x4000       # Disable SGI (Short Guard Interval).
-    lf_sta_migrate       | 0x8000       # OK-To-Migrate (Allow station migration between LANforge radios)
-    verbose              | 0x10000      # Verbose-Debug:  Increase debug info in wpa-supplicant and hostapd logs.
-    80211u_enable        | 0x20000      # Enable 802.11u (Interworking) feature.
-    80211u_auto          | 0x40000      # Enable 802.11u (Interworking) Auto-internetworking feature.  Always enabled currently.
-    80211u_gw            | 0x80000      # AP Provides access to internet (802.11u Interworking)
-    80211u_additional    | 0x100000     # AP requires additional step for access (802.11u Interworking)
-    80211u_e911          | 0x200000     # AP claims emergency services reachable (802.11u Interworking)
-    80211u_e911_unauth   | 0x400000     # AP provides Unauthenticated emergency services (802.11u Interworking)
-    hs20_enable          | 0x800000     # Enable Hotspot 2.0 (HS20) feature.  Requires WPA-2.
-    disable_gdaf         | 0x1000000    # AP:  Disable DGAF (used by HotSpot 2.0).
+    # OK-To-Migrate (Allow station migration between LANforge radios)
+    lf_sta_migrate       | 0x8000
+    # Verbose-Debug:  Increase debug info in wpa-supplicant and hostapd logs.
+    verbose              | 0x10000
+    # Enable 802.11u (Interworking) feature.
+    80211u_enable        | 0x20000
+    # Enable 802.11u (Interworking) Auto-internetworking feature.  Always enabled currently.
+    80211u_auto          | 0x40000
+    # AP Provides access to internet (802.11u Interworking)
+    80211u_gw            | 0x80000
+    # AP requires additional step for access (802.11u Interworking)
+    80211u_additional    | 0x100000
+    # AP claims emergency services reachable (802.11u Interworking)
+    80211u_e911          | 0x200000
+    # AP provides Unauthenticated emergency services (802.11u Interworking)
+    80211u_e911_unauth   | 0x400000
+    # Enable Hotspot 2.0 (HS20) feature.  Requires WPA-2.
+    hs20_enable          | 0x800000
+    # AP:  Disable DGAF (used by HotSpot 2.0).
+    disable_gdaf         | 0x1000000
     8021x_radius         | 0x2000000    # Use 802.1x (RADIUS for AP).
-    80211r_pmska_cache   | 0x4000000    # Enable oportunistic PMSKA caching for WPA2 (Related to 802.11r).
-    disable_ht80         | 0x8000000    # Disable HT80 (for AC chipset NICs only)
+    # Enable oportunistic PMSKA caching for WPA2 (Related to 802.11r).
+    80211r_pmska_cache   | 0x4000000
+    # Disable HT80 (for AC chipset NICs only)
+    disable_ht80         | 0x8000000
     ibss_mode            | 0x20000000   # Station should be in IBSS mode.
-    osen_enable          | 0x40000000   # Enable OSEN protocol (OSU Server-only Authentication)
-    disable_roam         | 0x80000000   # Disable automatic station roaming based on scan results.
+    # Enable OSEN protocol (OSU Server-only Authentication)
+    osen_enable          | 0x40000000
+    # Disable automatic station roaming based on scan results.
+    disable_roam         | 0x80000000
     ht160_enable         | 0x100000000  # Enable HT160 mode.
-    disable_fast_reauth  | 0x200000000  # Disable fast_reauth option for virtual stations.
+    # Disable fast_reauth option for virtual stations.
+    disable_fast_reauth  | 0x200000000
     mesh_mode            | 0x400000000  # Station should be in MESH mode.
-    power_save_enable    | 0x800000000  # Station should enable power-save.  May not work in all drivers/configurations.
+    # Station should enable power-save.  May not work in all drivers/configurations.
+    power_save_enable    | 0x800000000
     create_admin_down    | 0x1000000000 # Station should be created admin-down.
-    wds-mode             | 0x2000000000 # WDS station (sort of like a lame mesh), not supported on ath10k
-    no-supp-op-class-ie  | 0x4000000000 # Do not include supported-oper-class-IE in assoc requests.  May work around AP bugs.
-    txo-enable           | 0x8000000000 # Enable/disable tx-offloads, typically managed by set_wifi_txo command
+    # WDS station (sort of like a lame mesh), not supported on ath10k
+    wds-mode             | 0x2000000000
+    # Do not include supported-oper-class-IE in assoc requests.  May work around AP bugs.
+    no-supp-op-class-ie  | 0x4000000000
+    # Enable/disable tx-offloads, typically managed by set_wifi_txo command
+    txo-enable           | 0x8000000000
     use-wpa3             | 0x10000000000 # Enable WPA-3 (SAE Personal) mode.
     use-bss-transition   | 0x80000000000 # Enable BSS transition.
     disable-twt          | 0x100000000000 # Disable TWT mode
-    disable-ofdma        | 0x200000000000 # Disable OFDMA mode
-    disable-obss-scan    | 0x400000000000 # Disable OBSS SCAN feature in supplicant.
-    ft-roam-over-ds      | 0x800000000000 # Roam over DS when AP supports it.
-    rrm-ignore-beacon-req | 0x1000000000000 # Ignore (reject) RRM Beacon measurement request.
-    use-owe               | 0x2000000000000 # Enable OWE
-    be320-enable          | 0x4000000000000 # Enable 320Mhz mode.
-    disable-mlo           | 0x8000000000000 # Disable OFDMA
-    ignore-edca           | 0x20000000000000 # Request station to ignore EDCA settings
 
 For wifi_extra_keys syntax :
     telnet <lanforge ip> 4001
@@ -7252,13 +6516,13 @@ Multicast traffic :
 
 STATUS: Functional
 
-VERIFIED_ON: MAY 2025,
-             GUI Version:  5.5.1
-             Kernel Version: 6.11.12+
+VERIFIED_ON:   18-JULY-2023,
+             GUI Version:  5.4.6
+             Kernel Version: 5.19.17+
 
 LICENSE:
           Free to distribute and modify. LANforge systems must be licensed.
-          Copyright 2025 Candela Technologies Inc
+          Copyright 2023 Candela Technologies Inc
 
 INCLUDE_IN_README: False
 
@@ -7537,50 +6801,6 @@ INCLUDE_IN_README: False
         '--test_name',
         help='Test name when running through webgui'
     )
-
-    test_l3_parser.add_argument(
-        '--ssid',
-        help='Specify SSID for real clients will be configured only when --config is set to true.'
-    )
-    test_l3_parser.add_argument(
-        '--passwd',
-        type=str, nargs='?', const='',
-        help='Password for the SSID specified with --ssid; only applicable when --ssid is set.'
-    )
-    test_l3_parser.add_argument(
-        '--security',
-        help='Specify the security protocol for the SSID and password (e.g., WPA, WPA2, WPA3)'
-    )
-    test_l3_parser.add_argument(
-        '--device_list',
-        action='append',
-        help='Specify the Resource IDs for real clients. Accepts a comma-separated list (e.g., 1.11,1.95,1.360).'
-    )
-    test_l3_parser.add_argument("--expected_passfail_value", help="Specify the expected download rate in Mbps", default=None)
-    test_l3_parser.add_argument("--device_csv_name", type=str, help='Specify the csv name to store expected url values', default=None)
-    test_l3_parser.add_argument('--file_name', type=str, help='Specify the file name containing group details. Example:file1')
-    test_l3_parser.add_argument('--group_name', type=str, help='Specify the groups name that contains a list of devices. Example: group1,group2')
-    test_l3_parser.add_argument('--profile_name', type=str, help='specify the profile name')
-    test_l3_parser.add_argument("--eap_method", type=str, default='DEFAULT', help="Specify the EAP method for authentication.")
-    test_l3_parser.add_argument("--eap_identity", type=str, default='')
-    test_l3_parser.add_argument("--ieee8021x", action="store_true", help='Enables 802.1X enterprise authentication for test stations.')
-    test_l3_parser.add_argument("--ieee80211u", action="store_true", help='Enables IEEE 802.11u (Hotspot 2.0) support.')
-    test_l3_parser.add_argument("--ieee80211w", type=int, default=1, help='Enables IEEE 802.11w (Management Frame Protection) support.')
-    test_l3_parser.add_argument("--enable_pkc", action="store_true", help='Enables pkc support.')
-    test_l3_parser.add_argument("--bss_transition", action="store_true", help='Enables BSS transition support.')
-    test_l3_parser.add_argument("--power_save", action="store_true", help='Enables power-saving features.')
-    test_l3_parser.add_argument("--disable_ofdma", action="store_true", help='Disables OFDMA support.')
-    test_l3_parser.add_argument("--roam_ft_ds", action="store_true", help='Enables fast BSS transition (FT) support')
-    test_l3_parser.add_argument("--key_management", type=str, default='DEFAULT', help='Specify the key management method (e.g., WPA-PSK, WPA-EAP')
-    test_l3_parser.add_argument("--pairwise", type=str, default='NA')
-    test_l3_parser.add_argument("--private_key", type=str, default='NA', help='Specify EAP private key certificate file.')
-    test_l3_parser.add_argument("--ca_cert", type=str, default='NA', help='Specifiy the CA certificate file name')
-    test_l3_parser.add_argument("--client_cert", type=str, default='NA', help='Specify the client certificate file name')
-    test_l3_parser.add_argument("--pk_passwd", type=str, default='NA', help='Specify the password for the private key')
-    test_l3_parser.add_argument("--pac_file", type=str, default='NA', help='Specify the pac file name')
-    test_l3_parser.add_argument("--config", action="store_true", help="Specify for configuring the devices")
-    test_l3_parser.add_argument("--wait_time", type=int, help='Specify the maximum time to wait for Configuration', default=60)
-    test_l3_parser.add_argument("--real", action="store_true", help='For testing on real devies')
     parser.add_argument('--help_summary',
                         default=None,
                         action="store_true",
@@ -7619,7 +6839,7 @@ and generate a report.
         if args.dowebgui:
             test_name = args.test_name
             ip = args.lfmgr
-            logger.info(" dowebgui %s %s %s", args.dowebgui, test_name, ip)
+            logger.info("dowebgui", args.dowebgui, test_name, ip)
 
     # initialize pass / fail
     test_passed = False
@@ -7637,11 +6857,6 @@ and generate a report.
         logger_config.lf_logger_config_json = args.lf_logger_config_json
         logger_config.load_lf_logger_config()
 
-    validate_args(args)
-    endp_input_list = []
-    graph_input_list = []
-    if args.real:
-        endp_input_list, graph_input_list, config_devices, group_device_map = query_real_clients(args)
     # Validate existing station list configuration if specified before starting test
     if not args.use_existing_station_list and args.existing_station_list:
         logger.error("Existing stations specified, but argument \'--use_existing_station_list\' not specified")
@@ -8222,13 +7437,7 @@ and generate a report.
         network_auth_type_list=network_auth_type_list,
         anqp_3gpp_cell_net_list=anqp_3gpp_cell_net_list,
         ieee80211w_list=ieee80211w_list,
-        interopt_mode=interopt_mode,
-        endp_input_list=endp_input_list,
-        graph_input_list=graph_input_list,
-        real=args.real,
-        expected_passfail_value=args.expected_passfail_value,
-        device_csv_name=args.device_csv_name,
-        group_name=args.group_name
+        interopt_mode=interopt_mode
     )
 
     # Perform pre-test cleanup, if configured to do so
@@ -8279,10 +7488,7 @@ and generate a report.
 
     # Generate and write out test report
     logger.info("Generating test report")
-    if args.real:
-        ip_var_test.generate_report(config_devices, group_device_map)
-    else:
-        ip_var_test.generate_report()
+    ip_var_test.generate_report()
     ip_var_test.write_report()
 
     # TODO move to after reporting
@@ -8319,3 +7525,4 @@ and generate a report.
 
 if __name__ == "__main__":
     main()
+
