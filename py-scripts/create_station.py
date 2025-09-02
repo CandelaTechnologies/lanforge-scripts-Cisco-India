@@ -229,11 +229,8 @@ import sys
 import os
 import importlib
 import argparse
-import pprint
 import logging
-import subprocess
 import time
-import shutil
 import datetime
 
 
@@ -247,6 +244,7 @@ sys.path.append(os.path.join(os.path.abspath(__file__ + "../../../")))
 lfcli_base = importlib.import_module("py-json.LANforge.lfcli_base")
 LFCliBase = lfcli_base.LFCliBase
 LFUtils = importlib.import_module("py-json.LANforge.LFUtils")
+LFRequest = importlib.import_module("py-json.LANforge.LFRequest")
 realm = importlib.import_module("py-json.realm")
 Realm = realm.Realm
 lf_cleanup = importlib.import_module("py-scripts.lf_cleanup")
@@ -424,7 +422,7 @@ class CreateStation(Realm):
         self.station_profile.lfclient_url = self.lfclient_url
         self.station_profile.ssid = self.ssid
         self.station_profile.bssid = self.bssid
-        self.station_profile.ssid_pass = self.password,
+        self.station_profile.ssid_pass = self.password
         self.station_profile.security = self.security
         self.station_profile.number_template_ = self.number_template
         self.station_profile.mode = self.mode
@@ -463,9 +461,10 @@ class CreateStation(Realm):
         self.stations_build_start_time = int(time.time())
         print("stating creation started at {}".format(self.stations_build_start_time))
 
-        self.station_profile.use_security(security_type=self.security,
-                                          ssid=self.ssid,
-                                          passwd=self.password)
+        if self.key_mgmt == 'OWE':
+                    self.station_profile.use_security(security_type='owe', ssid=self.ssid, passwd=self.password)
+        else:
+            self.station_profile.use_security(security_type=self.security, ssid=self.ssid, passwd=self.password)
         self.station_profile.set_number_template(self.number_template)
         print("Creating stations")
         self.station_profile.set_command_flag("add_sta", "create_admin_down", 1)
@@ -529,13 +528,13 @@ class CreateStation(Realm):
                 # This works around limitation in the GUI which does a check for 'Key/Phrase'
                 # length when WPA/WPA2/WPA3 enabled (but that field is sadly also cleared here)
                 self.station_profile.set_wifi_extra(key_mgmt=self.key_mgmt,
-                                                    psk=self.password,
+                                                    # psk=self.password,
                                                     pairwise=self.pairwise_cipher,
                                                     group=self.groupwise_cipher
                                                     )
                 # self.station_profile.set_command_flag(command_name="add_sta", param_name="80211u_enable", value=0)
-                self.station_profile.set_command_flag(command_name="add_sta", param_name="8021x_radius",
-                                                      value=1)  # Enable Advanced/802.1X flag
+                # self.station_profile.set_command_flag(command_name="add_sta", param_name="8021x_radius",
+                #                                       value=1)  # Enable Advanced/802.1X flag
             else:
                 print("In condition for no key management, therefore no additional changes on the go")
         else:
@@ -613,6 +612,11 @@ class CreateStation(Realm):
         else:
             self._fail("Stations not properly created.")
         # Custom Wifi setting
+        self.station_profile.set_command_param("add_sta", "key", self.password)
+        add_sta_r = LFRequest.LFRequest(self.lfclient_url + "/cli-json/add_sta")
+        add_sta_r.addPostData(self.station_profile.add_sta_data)
+        add_sta_r.jsonPost(debug=self.debug, show_error=True, die_on_error_=False)
+
         if self.custom_wifi_cmd:
             for sta in self.sta_list:
                 self.set_custom_wifi(resource=int(sta.split('.')[1]),
@@ -673,7 +677,7 @@ def parse_args():
         prog='create_station.py',
         formatter_class=argparse.RawTextHelpFormatter,
         epilog='''\
-         Create stations
+            Create stations
             ''',
 
         description='''\
@@ -698,13 +702,13 @@ EXAMPLE:
 
          # For station enabled with additional flags
 
-           create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,station_flag==<staion_flags>'
-            --station_flag <staion_flags>
+            create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,station_flag==<station_flags>'
+            --station_flag <station_flags>
 
          # For creating station with enterprise authentication with TLS
 
-            create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,eap_method==EAP-TLS,eap_identity==<username>,eap_password==<password>,
-            pk_passwd==<password>,key_mgmt==<key mgmt>,ca_cert==<path>,private_key==<path>,pairwise_cipher==<cipher>,groupwise_cipher==<cipher>'
+            create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,eap_method==EAP-TLS,eap_identity==<username>,
+            eap_password==<password>,pk_passwd==<password>,key_mgmt==<key mgmt>,ca_cert==<path>,private_key==<path>,pairwise_cipher==<cipher>,groupwise_cipher==<cipher>'
 
          # For creating station with enterprise authentication with TTLS or PEAP
 
@@ -720,15 +724,15 @@ EXAMPLE:
 
             eap_method,identity,anonymous,eap_passwd,phase1,phase2,pk_password,ca_cert,private_key,key_mgmt,pairwise,group,sta_flag,pk_password,mode
 
-            create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>' 
-                                                   --radios 'radio==1.1.wiphy2,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,eap_method==<TTLS|PEAP>,key_mgmt==<key mgmt>' 
+            create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>'
+            --radios 'radio==1.1.wiphy2,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,eap_method==<TTLS|PEAP>,key_mgmt==<key mgmt>'
 
 SCRIPT_CLASSIFICATION:  Creation
 
-SCRIPT_CATEGORIES:   Functional 
+SCRIPT_CATEGORIES:   Functional
 
-NOTES: 
-        Does not create cross connects 
+NOTES:
+        Does not create cross connects
         Mainly used to determine how to create a station
 
         * We can also specify the mode for the stations using "--mode" argument
@@ -750,7 +754,7 @@ NOTES:
                 "bgnAX"  : "13"}
 
             example:
-                    create_station.py --mgr <lanforge ip> --radio wiphy1 --start_id 2 --num_stations 1 --ssid <ssid> --passwd <password> 
+                    create_station.py --mgr <lanforge ip> --radio wiphy1 --start_id 2 --num_stations 1 --ssid <ssid> --passwd <password>
                     --security wpa2 --mode 6
 
             --station_flag  <staion_flags>
@@ -778,7 +782,7 @@ NOTES:
                 "80211r_pmska_cache"   :  Enable PMSKA caching for WPA2 (Related to 802.11r)
 
             example:
-                    create_station.py --mgr <lanforge ip> --radio wiphy1 --start_id 2 --num_stations 1 --ssid <ssid> --passwd <password> 
+                    create_station.py --mgr <lanforge ip> --radio wiphy1 --start_id 2 --num_stations 1 --ssid <ssid> --passwd <password>
                     --security wpa2 --station_flag power_save_enable
 
             --country_code 840
@@ -798,7 +802,7 @@ NOTES:
                 Belize          :   84      |       Hong Kong       :   344     |      Macedonia       :   807     |      Syria           :   760
                 Bolivia         :   68      |       Hungary         :   348     |      Malaysia        :   458     |      Taiwan          :   158
                 BiH             :   70      |       Iceland         :   352     |      Mexico          :   484     |      Thailand        :   764
-                Brazil          :   76      |       India           :   356     |      Monaco          :   492     |      Trinidad &Tobago:   780   
+                Brazil          :   76      |       India           :   356     |      Monaco          :   492     |      Trinidad &Tobago:   780
                 Brunei          :   96      |       Indonesia       :   360     |      Morocco         :   504     |      Tunisia         :   788
                 Bulgaria        :   100     |       Iran            :   364     |      Netherlands     :   528     |      Turkey          :   792
                 Canada          :   124     |       Ireland         :   372     |      Aruba           :   533     |      U.A.E.          :   784
@@ -823,7 +827,7 @@ NOTES:
 
             example:
                     create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>' --cleanup
-                    
+
             extra_securities:-
             example:
                     create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,extra_securities==<[wpa|wpa2|wpa3]>'
@@ -1106,48 +1110,48 @@ def validate_args(args):
         exit(1)
         print("--radios required")
 
-    # if args.eap_method is not None:
-    #     if args.eap_identity is None:
-    #         print("--eap_identity required")
-    #         exit(1)
-    #     elif args.eap_password is None:
-    #         print("--eap_password required")
-    #         exit(1)
-    #     elif args.key_mgmt is None:
-    #         print("--key_mgmt required")
-    #         exit(1)
-    #     elif args.eap_method == 'TLS':
-    #         if args.pk_passwd is None:
-    #             print("--pk_passwd required")
-    #             exit(1)
-    #         elif args.ca_cert is None:
-    #             print('--ca_cert required')
-    #             exit(1)
-    #         elif args.private_key is None:
-    #             print('--private_key required')
-    #             exit(0)
+    if args.eap_method is not None:
+        if args.eap_identity is None:
+            print("--eap_identity required")
+            exit(1)
+        elif args.eap_password is None:
+            print("--eap_password required")
+            exit(1)
+        elif args.key_mgmt is None:
+            print("--key_mgmt required")
+            exit(1)
+        elif args.eap_method == 'TLS':
+            if args.pk_passwd is None:
+                print("--pk_passwd required")
+                exit(1)
+            elif args.ca_cert is None:
+                print('--ca_cert required')
+                exit(1)
+            elif args.private_key is None:
+                print('--private_key required')
+                exit(0)
 
-    #     # Only need to check WPA3 ciphers because user requests 802.1X authentication.
-    #     # Personal WPA3 always uses SAE, so default '[BLANK]' is fine if ciphers
-    #     # aren't specified.
-    #     #
-    #     # Security type comes in one of following formats (possibly capitalized),
-    #     # so need to check if substring:
-    #     #   'type'
-    #     #   '<type1|type2>'
-    #     if 'wpa3' in args.security or 'WPA3' in args.security:
-    #         if args.pairwise_cipher == '[BLANK]':
-    #             print('--pairwise_cipher required')
-    #             exit(1)
-    #         elif args.groupwise_cipher == '[BLANK]':
-    #             print('--groupwise_cipher required')
-    #             exit(1)Add this flag to stop cleaning up before station creation
+        # Only need to check WPA3 ciphers because user requests 802.1X authentication.
+        # Personal WPA3 always uses SAE, so default '[BLANK]' is fine if ciphers
+        # aren't specified.
+        #
+        # Security type comes in one of following formats (possibly capitalized),
+        # so need to check if substring:
+        #   'type'
+        #   '<type1|type2>'
+        if 'wpa3' in args.security or 'WPA3' in args.security:
+            if args.pairwise_cipher == '[BLANK]':
+                print('--pairwise_cipher required')
+                exit(1)
+            elif args.groupwise_cipher == '[BLANK]':
+                print('--groupwise_cipher required')
+                exit(1)
 
 
 def main():
     args = parse_args()
+    validate_args(args)
 
-    # validate_args(args)
     logger_config = lf_logger_config.lf_logger_config()
     # set the logger level to requested value
     logger_config.set_level(level=args.log_level)
@@ -1159,8 +1163,8 @@ def main():
     eap_method_list, eap_identity_list, eap_anonymous_identity_list, eap_password_list = [], [], [], []
     eap_phase1_list, eap_phase2_list, pk_passwd_list, ca_cert_list = [], [], [], []
     private_key_list, key_mgmt_list, pairwise_cipher_list, groupwise_cipher_list = [], [], [], []
-    station_flag_list, mode_list, custom_wifi_cmd_list, command_list, extra_securities_list = [], [], [], [], []
-    ieee80211w_list = []
+    station_flag_list, mode_list, custom_wifi_cmd_list, extra_securities_list, ieee80211w_list = [], [], [], [], []
+
     for radio_ in args.radios:
         radio_keys = ['radio', 'security', 'ssid', 'passwd', 'num_sta']
         logger.info("radio_dict before format {}".format(radio_))
@@ -1275,10 +1279,10 @@ def main():
         logger.debug("radio_dict {}".format(radio_info_dict))
 
         if "ieee80211w" in radio_info_dict:
-            ieee80211w_list.append(radio_info_dict['ieee80211w'])
+            ieee80211w_list.append(int(radio_info_dict['ieee80211w']))
         else:
             ieee80211w_list.append(None)
-    print('llllllllllllll',station_flag_list)
+
     start_id = 0
     if args.start_id != 0:
         start_id = int(args.start_id)
@@ -1383,3 +1387,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
