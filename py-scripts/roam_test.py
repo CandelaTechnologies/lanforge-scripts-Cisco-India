@@ -318,7 +318,9 @@ class Roam(Realm):
 
     def start_sniff(self, capname='roam_test.pcap'):
         self.monitor.admin_up()
-        c = f"tshark -i moni0 -w /home/lanforge/roam_test.pcap"
+        base_dir = os.getcwd()
+        pcap_path = os.path.join(base_dir, 'roam_test.pcap')
+        c = f"tshark -i moni0 -w {pcap_path}"
         try:
             print("RUNNING TSHARK")
             self.tshark_process = subprocess.Popen(c, shell=True)
@@ -343,14 +345,17 @@ class Roam(Realm):
     def get_bssids(self):
         bssids = []
         removable_stations = []
-        print('---------------------', self.station_list)
         for station in self.get_station_list():
             bssid = self.get_port_data(station, 'ap')
-            print("BSSID:- ", bssid)
-            if bssid == 'NA':
-                print("BSSID NA")
-                time.sleep(10)
+            retry_count = 0
+            while (bssid is None) or (bssid == 'NA') or (bssid == 'Not-Associated'):
+                if retry_count >= 30:
+                    break
+                time.sleep(3)
                 bssid = self.get_port_data(station, 'ap')
+                time.sleep(3)
+                bssid = self.get_port_data(station, 'ap')
+                retry_count += 1
             if (bssid is not None):
                 bssids.append(bssid)
             else:
@@ -902,9 +907,9 @@ class Roam(Realm):
             # Get the current working directory
             current_directory = os.getcwd()
             print("current_directory", current_directory)
-            base_dir = '/home/lanforge'
+            #base_dir = '/home/lanforge'
             source = os.path.join(current_directory, f'output.csv')
-            destination_dir = os.path.join(base_dir, 'lanforge-scripts', 'py-scripts')
+            destination_dir = os.path.join(current_directory)
             destination = os.path.join(destination_dir, self.report_path_date_time, f'output.csv')
             print("destination", destination)
             if os.path.isfile(source):
@@ -1103,8 +1108,8 @@ class Roam(Realm):
         report.set_table_title(
             'Migration based Pass/Fail Roam Status')
         report.build_table_title()
-        base_dir = '/home/lanforge'
-        base_dir = os.path.join(base_dir, 'lanforge-scripts', 'py-scripts')
+        base_dir = os.getcwd()
+        base_dir = os.path.join(base_dir)
         table = {
             'Station ID': [],
             'Before Roam BSSID': [],
@@ -1124,9 +1129,9 @@ class Roam(Realm):
                 shutil.move(source, destination)
                 # removing print for sta scan
                 # print(f" wpa_sta_scan_{station}.txt file moved successfully!")
-        base_dir = '/home/lanforge'
+        base_dir = os.getcwd()
         source = os.path.join(base_dir, f'roam_test.pcap')
-        destination_dir = os.path.join(base_dir, 'lanforge-scripts', 'py-scripts')
+        destination_dir = os.path.join(base_dir)
         destination = os.path.join(destination_dir, f'{report.date_time_directory}', f'roam_test.pcap')
 
         if os.path.isfile(source):
@@ -1719,4 +1724,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
