@@ -25,6 +25,7 @@ class StationProfile:
                  ssid_pass="NA",
                  bssid='DEFAULT', # TODO: Fix root cause of 'null' when not set issue (REST server-side issue)
                  security="open",
+                 mac=None,  # added mac option
                  number_template_="00000",
                  mode=0,  # shouldn't this be -1 or AUTO?
                  up=True,
@@ -38,6 +39,7 @@ class StationProfile:
         self.lfclient_url = lfclient_url
         self.ssid = ssid
         self.bssid = bssid
+        self.mac = mac  # added mac option
         self.ssid_pass = ssid_pass
         self.mode = mode
         self.up = up
@@ -62,7 +64,7 @@ class StationProfile:
             "ssid": None,
             "key": None,
             "mode": 0,
-            "mac": "xx:xx:xx:xx:*:xx",
+            "mac": "xx:xx:xx:xx:*:xx",  # added mac option in add sta_data
             "flags": 0,  # (0x400 + 0x20000 + 0x1000000000)  # create admin down
             "flags_mask": 0,
             "ap": bssid,
@@ -84,6 +86,7 @@ class StationProfile:
             "shelf": 1,
             "resource": 1,
             "port": None,
+            "mac": None,
             "current_flags": 0,
             "interest": 0,  # (0x2 + 0x4000 + 0x800000)  # current, dhcp, down,
         }
@@ -474,6 +477,7 @@ class StationProfile:
     def create(self, radio,
                num_stations=0,
                sta_names_=None,
+               mac=None,            # added mac option
                dry_run=False,
                up_=None,
                debug=False,
@@ -536,6 +540,7 @@ class StationProfile:
                                                                    set_port.set_port_current_flags)
         self.set_port_data["interest"] = self.add_named_flags(self.desired_set_port_interest_flags,
                                                               set_port.set_port_interest_flags)
+            
         self.wifi_extra_data["resource"] = radio_resource
         self.wifi_extra_data["shelf"] = radio_shelf
         self.wifi_extra2_data["resource"] = radio_resource
@@ -568,7 +573,7 @@ class StationProfile:
         for port in sta_names_:
             eid = LFUtils.name_to_eid(port)
             my_sta_eids.append("%s.%s.%s" % (radio_shelf, radio_resource, eid[2]))
-
+            
         if (len(my_sta_eids) >= 15) or suppress_related_commands_:
             self.add_sta_data["suppress_preexec_cli"] = "yes"
             self.add_sta_data["suppress_preexec_method"] = 1
@@ -585,7 +590,7 @@ class StationProfile:
 
         # track the names of stations in case we have stations added multiple times
         finished_sta = []
-
+        e=0
         for eidn in my_sta_eids:
             if eidn in self.station_names:
                 logger.info("Station {eidn} already created, skipping.".format(eidn=eidn))
@@ -596,7 +601,11 @@ class StationProfile:
                 if self.debug:
                     logger.debug("Station {eidn} already created".format(eidn=eidn))
                 continue
-
+            if self.mac!="xx:xx:xx:*:*:xx":
+                mac=self.mac[e]
+                e += 1
+            else:
+                mac=self.mac
             eid = self.local_realm.name_to_eid(eidn)
             name = eid[2]
             num += 1
@@ -604,9 +613,11 @@ class StationProfile:
             self.add_sta_data["resource"] = radio_resource
             self.add_sta_data["radio"] = radio_port
             self.add_sta_data["sta_name"] = name  # for create station calls
+            self.add_sta_data["mac"] = mac  # added mac option
             self.set_port_data["port"] = name  # for set_port calls.
             self.set_port_data["shelf"] = radio_shelf
             self.set_port_data["resource"] = radio_resource
+            self.set_port_data["mac"] = mac
 
             add_sta_r.addPostData(self.add_sta_data)
             if debug:
@@ -723,7 +734,6 @@ class StationProfile:
                 self.add_sta_data['key'] = self.ssid_pass
             # if self.mac: use set_port_data['mac'] when modifying a station's mac
             self.add_sta_data['mac'] = 'NA'
-
             add_sta_r = LFRequest.LFRequest(self.lfclient_url + "/cli-json/add_sta")
             if self.debug:
                 logger.debug(self.lfclient_url + "/cli_json/add_sta")

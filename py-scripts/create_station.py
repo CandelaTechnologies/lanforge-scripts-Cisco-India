@@ -329,6 +329,8 @@ class CreateStation(Realm):
                  _bssid=None,
                  _security=None,
                  _password=None,
+                 _mac=None,   
+                 _mac_l=None,      #added mac option
                  _host=None,
                  _port=None,
                  _mode=0,
@@ -369,6 +371,7 @@ class CreateStation(Realm):
         self.mode = _mode
         self.ieee80211w = _ieee80211w
         self.extra_securities = _extra_securities
+        self.mac = _mac    #added mac option
         if _mode:
             if str.isalpha(_mode):
                 self.mode = add_sta.add_sta_modes[_mode]
@@ -426,6 +429,7 @@ class CreateStation(Realm):
         self.station_profile.security = self.security
         self.station_profile.number_template_ = self.number_template
         self.station_profile.mode = self.mode
+        self.station_profile.mac = self.mac  #added mac option
         # if self.sta_flags is not None:
         #     self.station_profile.desired_add_sta_flags = self.sta_flags
         #     self.station_profile.desired_add_sta_mask = self.sta_flags
@@ -454,7 +458,7 @@ class CreateStation(Realm):
                 timestamp = str(message['time-stamp'])
                 print(datetime.datetime.fromtimestamp(int(timestamp[:-3])).strftime('%Y-%m-%d %H:%M:%S'), end=" : ")
                 print(message['text'])
-
+    
     def build(self):
         # Build stations
 
@@ -497,6 +501,8 @@ class CreateStation(Realm):
             self.eap_phase2 = ""
         if not self.eap_anonymous_identity:
             self.eap_anonymous_identity = ""
+        if not self.mac:
+            self.mac = "NA"
         # if not self.psk:
         #     self.psk = ""
 
@@ -603,9 +609,11 @@ class CreateStation(Realm):
                 retries=self.set_txo_data["retries"],
                 sgi=self.set_txo_data["sgi"],
             )
-
+        print("Creating stations",self.sta_list)
+        print("With MAC:",self.mac)   #added mac option
         if self.station_profile.create(radio=self.radio,
                                        sta_names_=self.sta_list,
+                                       mac=self.mac,    #added mac option
                                        debug=self.debug,
                                        up_=self.up):
             self._pass("Stations created.")
@@ -671,7 +679,6 @@ class CreateStation(Realm):
                 available_stations.append(list(interface_name.keys())[0])
         return (available_stations)
 
-
 def parse_args():
     parser = LFCliBase.create_basic_argparse(  # see create_basic_argparse in ../py-json/LANforge/lfcli_base.py
         prog='create_station.py',
@@ -682,267 +689,267 @@ def parse_args():
 
         description='''\
 
-NAME: create_station.py
+    NAME: create_station.py
 
-PURPOSE: create_station.py will create a variable number of stations, and connect them to a specified wireless network.
+    PURPOSE: create_station.py will create a variable number of stations, and connect them to a specified wireless network.
 
-EXAMPLE:
-         # For creating the single stations
+    EXAMPLE:
+            # For creating the single stations
 
-            create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>'
+                create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>'
 
-         # For creating the multiple stations
+            # For creating the multiple stations
 
-            create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==10,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>'
+                create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==10,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>'
 
-         # For creating the stations with radio settings like anteena, channel, etc.
+            # For creating the stations with radio settings like anteena, channel, etc.
 
-            create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,radio_antenna==4,
-            radio_channel==6'
+                create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,radio_antenna==4,
+                radio_channel==6'
 
-         # For station enabled with additional flags
+            # For station enabled with additional flags
 
-            create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,station_flag==<station_flags>'
-            --station_flag <station_flags>
+                create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,station_flag==<station_flags>'
+                --station_flag <station_flags>
 
-         # For creating station with enterprise authentication with TLS
+            # For creating station with enterprise authentication with TLS
 
-            create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,eap_method==EAP-TLS,eap_identity==<username>,
-            eap_password==<password>,pk_passwd==<password>,key_mgmt==<key mgmt>,ca_cert==<path>,private_key==<path>,pairwise_cipher==<cipher>,groupwise_cipher==<cipher>'
+                create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,eap_method==EAP-TLS,eap_identity==<username>,
+                eap_password==<password>,pk_passwd==<password>,key_mgmt==<key mgmt>,ca_cert==<path>,private_key==<path>,pairwise_cipher==<cipher>,groupwise_cipher==<cipher>'
 
-         # For creating station with enterprise authentication with TTLS or PEAP
+            # For creating station with enterprise authentication with TTLS or PEAP
 
-            create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,eap_method==<EAP-TTLS|EAP-PEAP>,
-            eap_identity==<username>,eap_password==<password>,key_mgmt==<key mgmt>,pairwise_cipher==<cipher>,groupwise_cipher==<cipher>'
+                create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,eap_method==<EAP-TTLS|EAP-PEAP>,
+                eap_identity==<username>,eap_password==<password>,key_mgmt==<key mgmt>,pairwise_cipher==<cipher>,groupwise_cipher==<cipher>'
 
-        # CLI to Connect Clients with given custom wifi command.
+            # CLI to Connect Clients with given custom wifi command.
 
-            create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,
-            custom_wifi_cmd=='bgscan="simple:50:-65:300"'
+                create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,
+                custom_wifi_cmd=='bgscan="simple:50:-65:300"'
 
-        # For creating station with multiple radio with different securities
+            # For creating station with multiple radio with different securities
 
-            eap_method,identity,anonymous,eap_passwd,phase1,phase2,pk_password,ca_cert,private_key,key_mgmt,pairwise,group,sta_flag,pk_password,mode
+                eap_method,identity,anonymous,eap_passwd,phase1,phase2,pk_password,ca_cert,private_key,key_mgmt,pairwise,group,sta_flag,pk_password,mode
 
-            create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>'
-            --radios 'radio==1.1.wiphy2,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,eap_method==<TTLS|PEAP>,key_mgmt==<key mgmt>'
+                create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>'
+                --radios 'radio==1.1.wiphy2,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,eap_method==<TTLS|PEAP>,key_mgmt==<key mgmt>'
 
-SCRIPT_CLASSIFICATION:  Creation
+    SCRIPT_CLASSIFICATION:  Creation
 
-SCRIPT_CATEGORIES:   Functional
+    SCRIPT_CATEGORIES:   Functional
 
-NOTES:
-        Does not create cross connects
-        Mainly used to determine how to create a station
+    NOTES:
+            Does not create cross connects
+            Mainly used to determine how to create a station
 
-        * We can also specify the mode for the stations using "--mode" argument
+            * We can also specify the mode for the stations using "--mode" argument
 
-            --mode   1
-                {"auto"   : "0",
-                "a"      : "1",
-                "b"      : "2",
-                "g"      : "3",
-                "abg"    : "4",
-                "abgn"   : "5",
-                "bgn"    : "6",
-                "bg"     : "7",
-                "abgnAC" : "8",
-                "anAC"   : "9",
-                "an"     : "10",
-                "bgnAC"  : "11",
-                "abgnAX" : "12",
-                "bgnAX"  : "13"}
+                --mode   1
+                    {"auto"   : "0",
+                    "a"      : "1",
+                    "b"      : "2",
+                    "g"      : "3",
+                    "abg"    : "4",
+                    "abgn"   : "5",
+                    "bgn"    : "6",
+                    "bg"     : "7",
+                    "abgnAC" : "8",
+                    "anAC"   : "9",
+                    "an"     : "10",
+                    "bgnAC"  : "11",
+                    "abgnAX" : "12",
+                    "bgnAX"  : "13"}
 
-            example:
-                    create_station.py --mgr <lanforge ip> --radio wiphy1 --start_id 2 --num_stations 1 --ssid <ssid> --passwd <password>
-                    --security wpa2 --mode 6
+                example:
+                        create_station.py --mgr <lanforge ip> --radio wiphy1 --start_id 2 --num_stations 1 --ssid <ssid> --passwd <password>
+                        --security wpa2 --mode 6
 
-            --station_flag  <staion_flags>
-                add_sta_flags = {
-                "osen_enable"          :  Enable OSEN protocol (OSU Server-only Authentication)
-                "ht40_disable"         :  Disable HT-40 even if hardware and AP support it.
-                "ht160_enable"         :  Enable HT160 mode.
-                "disable_sgi"          :  Disable SGI (Short Gu
-                "hs20_enable"          :  Enable Hotspot 2.0 (HS20) feature.  R
-                "txo-enable"           :  Enable/disable tx-offloads, typically managed by set_wifi_txo command
-                "custom_conf"          :  Use Custom wpa_supplicant config file.
-                "ibss_mode"            :  Station should be in IBSS mode.
-                "mesh_mode"            :  Station should be in MESH mode.
-                "wds-mode"             :  WDS station (sort of like a lame mesh), not supported on ath10k
-                "scan_ssid"            :  Enable SCAN-SSID flag in wpa_supplicant.
-                "passive_scan"         :  Use passive scanning (don't send probe requests).
-                "lf_sta_migrate"       :  OK-To-Migrate (Allow station migration between LANforge radios)
-                "disable_fast_reauth"  :  Disable fast_reauth option for virtual stations.
-                "power_save_enable"    :  Station should enable power-save.  May not work in all drivers/configurations.
-                "disable_roam"         :  Disable automatic station roaming based on scan results.
-                "no-supp-op-class-ie"  :  Do not include supported-oper-class-IE in assoc requests.  May work around AP bugs.
-                "use-bss-transition"   :  Enable BSS transition.
-                "ft-roam-over-ds"      :  Roam over DS when AP supports it.
-                "disable_ht80"         :  Disable HT80 (for AC chipset NICs only)}
-                "80211r_pmska_cache"   :  Enable PMSKA caching for WPA2 (Related to 802.11r)
+                --station_flag  <staion_flags>
+                    add_sta_flags = {
+                    "osen_enable"          :  Enable OSEN protocol (OSU Server-only Authentication)
+                    "ht40_disable"         :  Disable HT-40 even if hardware and AP support it.
+                    "ht160_enable"         :  Enable HT160 mode.
+                    "disable_sgi"          :  Disable SGI (Short Gu
+                    "hs20_enable"          :  Enable Hotspot 2.0 (HS20) feature.  R
+                    "txo-enable"           :  Enable/disable tx-offloads, typically managed by set_wifi_txo command
+                    "custom_conf"          :  Use Custom wpa_supplicant config file.
+                    "ibss_mode"            :  Station should be in IBSS mode.
+                    "mesh_mode"            :  Station should be in MESH mode.
+                    "wds-mode"             :  WDS station (sort of like a lame mesh), not supported on ath10k
+                    "scan_ssid"            :  Enable SCAN-SSID flag in wpa_supplicant.
+                    "passive_scan"         :  Use passive scanning (don't send probe requests).
+                    "lf_sta_migrate"       :  OK-To-Migrate (Allow station migration between LANforge radios)
+                    "disable_fast_reauth"  :  Disable fast_reauth option for virtual stations.
+                    "power_save_enable"    :  Station should enable power-save.  May not work in all drivers/configurations.
+                    "disable_roam"         :  Disable automatic station roaming based on scan results.
+                    "no-supp-op-class-ie"  :  Do not include supported-oper-class-IE in assoc requests.  May work around AP bugs.
+                    "use-bss-transition"   :  Enable BSS transition.
+                    "ft-roam-over-ds"      :  Roam over DS when AP supports it.
+                    "disable_ht80"         :  Disable HT80 (for AC chipset NICs only)}
+                    "80211r_pmska_cache"   :  Enable PMSKA caching for WPA2 (Related to 802.11r)
 
-            example:
-                    create_station.py --mgr <lanforge ip> --radio wiphy1 --start_id 2 --num_stations 1 --ssid <ssid> --passwd <password>
-                    --security wpa2 --station_flag power_save_enable
+                example:
+                        create_station.py --mgr <lanforge ip> --radio wiphy1 --start_id 2 --num_stations 1 --ssid <ssid> --passwd <password>
+                        --security wpa2 --station_flag power_save_enable
 
-            --country_code 840
-                United States   :   840     |       Dominican Rep   :   214     |      Japan (JE2)     :   397     |      Portugal        :   620
-                Albania         :   8       |       Ecuador         :   218     |      Jordan          :   400     |      Pueto Rico      :   630
-                Algeria         :   12      |       Egypt           :   818     |      Kazakhstan      :   398     |      Qatar           :   634
-                Argentina       :   32      |       El Salvador     :   222     |      North Korea     :   408     |      Romania         :   642
-                Bangladesh      :   50      |       Estonia         :   233     |      South Korea     :   410     |      Russia          :   643
-                Armenia         :   51      |       Finland         :   246     |      South Korea     :   411     |      Saudi Arabia    :   682
-                Australia       :   36      |       France          :   250     |      Kuwait          :   414     |      Singapore       :   702
-                Austria         :   40      |       Georgia         :   268     |      Latvia          :   428     |      Slovak Republic :   703
-                Azerbaijan      :   31      |       Germany         :   276     |      Lebanon         :   422     |      Slovenia        :   705
-                Bahrain         :   48      |       Greece          :   300     |      Liechtenstein   :   438     |      South Africa    :   710
-                Barbados        :   52      |       Guatemala       :   320     |      Lithuania       :   440     |      Spain           :   724
-                Belarus         :   112     |       Haiti           :   332     |      Luxembourg      :   442     |      Sweden          :   752
-                Belgium         :   56      |       Honduras        :   340     |      Macau           :   446     |      Switzerland     :   756
-                Belize          :   84      |       Hong Kong       :   344     |      Macedonia       :   807     |      Syria           :   760
-                Bolivia         :   68      |       Hungary         :   348     |      Malaysia        :   458     |      Taiwan          :   158
-                BiH             :   70      |       Iceland         :   352     |      Mexico          :   484     |      Thailand        :   764
-                Brazil          :   76      |       India           :   356     |      Monaco          :   492     |      Trinidad &Tobago:   780
-                Brunei          :   96      |       Indonesia       :   360     |      Morocco         :   504     |      Tunisia         :   788
-                Bulgaria        :   100     |       Iran            :   364     |      Netherlands     :   528     |      Turkey          :   792
-                Canada          :   124     |       Ireland         :   372     |      Aruba           :   533     |      U.A.E.          :   784
-                Chile           :   152     |       Israel          :   376     |      New Zealand     :   554     |      Ukraine         :   804
-                China           :   156     |       Italy           :   380     |      Norway          :   578     |      United Kingdom  :   826
-                Colombia        :   170     |       Jamaica         :   388     |      Oman            :   512     |      Uruguay         :   858
-                Costa Rica      :   188     |       Japan           :   392     |      Pakistan        :   586     |      Uzbekistan      :   860
-                Croatia         :   191     |       Japan (JP1)     :   393     |      Panama          :   591     |      Venezuela       :   862
-                Cyprus          :   196     |       Japan (JP0)     :   394     |      Peru            :   604     |      Vietnam         :   704
-                Czech Rep       :   203     |       Japan (JP1-1)   :   395     |      Philippines     :   608     |      Yemen           :   887
-                Denmark         :   208     |       Japan (JE1)     :   396     |      Poland          :   616     |      Zimbabwe        :   716
+                --country_code 840
+                    United States   :   840     |       Dominican Rep   :   214     |      Japan (JE2)     :   397     |      Portugal        :   620
+                    Albania         :   8       |       Ecuador         :   218     |      Jordan          :   400     |      Pueto Rico      :   630
+                    Algeria         :   12      |       Egypt           :   818     |      Kazakhstan      :   398     |      Qatar           :   634
+                    Argentina       :   32      |       El Salvador     :   222     |      North Korea     :   408     |      Romania         :   642
+                    Bangladesh      :   50      |       Estonia         :   233     |      South Korea     :   410     |      Russia          :   643
+                    Armenia         :   51      |       Finland         :   246     |      South Korea     :   411     |      Saudi Arabia    :   682
+                    Australia       :   36      |       France          :   250     |      Kuwait          :   414     |      Singapore       :   702
+                    Austria         :   40      |       Georgia         :   268     |      Latvia          :   428     |      Slovak Republic :   703
+                    Azerbaijan      :   31      |       Germany         :   276     |      Lebanon         :   422     |      Slovenia        :   705
+                    Bahrain         :   48      |       Greece          :   300     |      Liechtenstein   :   438     |      South Africa    :   710
+                    Barbados        :   52      |       Guatemala       :   320     |      Lithuania       :   440     |      Spain           :   724
+                    Belarus         :   112     |       Haiti           :   332     |      Luxembourg      :   442     |      Sweden          :   752
+                    Belgium         :   56      |       Honduras        :   340     |      Macau           :   446     |      Switzerland     :   756
+                    Belize          :   84      |       Hong Kong       :   344     |      Macedonia       :   807     |      Syria           :   760
+                    Bolivia         :   68      |       Hungary         :   348     |      Malaysia        :   458     |      Taiwan          :   158
+                    BiH             :   70      |       Iceland         :   352     |      Mexico          :   484     |      Thailand        :   764
+                    Brazil          :   76      |       India           :   356     |      Monaco          :   492     |      Trinidad &Tobago:   780
+                    Brunei          :   96      |       Indonesia       :   360     |      Morocco         :   504     |      Tunisia         :   788
+                    Bulgaria        :   100     |       Iran            :   364     |      Netherlands     :   528     |      Turkey          :   792
+                    Canada          :   124     |       Ireland         :   372     |      Aruba           :   533     |      U.A.E.          :   784
+                    Chile           :   152     |       Israel          :   376     |      New Zealand     :   554     |      Ukraine         :   804
+                    China           :   156     |       Italy           :   380     |      Norway          :   578     |      United Kingdom  :   826
+                    Colombia        :   170     |       Jamaica         :   388     |      Oman            :   512     |      Uruguay         :   858
+                    Costa Rica      :   188     |       Japan           :   392     |      Pakistan        :   586     |      Uzbekistan      :   860
+                    Croatia         :   191     |       Japan (JP1)     :   393     |      Panama          :   591     |      Venezuela       :   862
+                    Cyprus          :   196     |       Japan (JP0)     :   394     |      Peru            :   604     |      Vietnam         :   704
+                    Czech Rep       :   203     |       Japan (JP1-1)   :   395     |      Philippines     :   608     |      Yemen           :   887
+                    Denmark         :   208     |       Japan (JE1)     :   396     |      Poland          :   616     |      Zimbabwe        :   716
 
-            --no_pre_cleanup
-                    Disables station cleanup before creation of stations
+                --no_pre_cleanup
+                        Disables station cleanup before creation of stations
 
-            example:
-                    create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>' --no_pre_cleanup
+                example:
+                        create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>' --no_pre_cleanup
 
 
-            --cleanup
-                    Add this flag to clean up stations after creation
+                --cleanup
+                        Add this flag to clean up stations after creation
 
-            example:
-                    create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>' --cleanup
+                example:
+                        create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>' --cleanup
 
-            extra_securities:-
-            example:
-                    create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,extra_securities==<[wpa|wpa2|wpa3]>'
+                extra_securities:-
+                example:
+                        create_station.py --mgr <lanforge ip> --radios 'radio==1.1.wiphy1,num_sta==1,ssid==<ssid>,passwd==<password>,security==<wpa2|wpa3>,extra_securities==<[wpa|wpa2|wpa3]>'
 
-        * For enterprise authentication
-            --eap_method <eap_method>
-                    Add this argument to specify the EAP method
+            * For enterprise authentication
+                --eap_method <eap_method>
+                        Add this argument to specify the EAP method
 
-            example:
+                example:
+                        DEFAULT
+                        EAP-MD5
+                        MSCHAPV2
+                        EAP-OTP
+                        EAP-GTC
+                        EAP-TLS
+                        EAP-PEAP
+                        EAP-TTLS
+                        EAP-SIM
+                        EAP-AKA
+                        EAP-PSK
+                        EAP-IKEV2
+                        EAP-FAST
+                        WFA-UNAUTH-TLS
+                        TTLS PEAP TLS
+
+                --pairwise_cipher [BLANK]
+                        Add this argument to specify the type of pairwise cipher
+
                     DEFAULT
-                    EAP-MD5
-                    MSCHAPV2
-                    EAP-OTP
-                    EAP-GTC
-                    EAP-TLS
-                    EAP-PEAP
-                    EAP-TTLS
-                    EAP-SIM
-                    EAP-AKA
-                    EAP-PSK
-                    EAP-IKEV2
-                    EAP-FAST
-                    WFA-UNAUTH-TLS
-                    TTLS PEAP TLS
+                    CCMP
+                    TKIP
+                    NONE
+                    CCMP TKIP
+                    CCMP-256
+                    GCMP (wpa3)
+                    GCMP-256 (wpa3)
+                    CCMP/GCMP-256 (wpa3)
 
-            --pairwise_cipher [BLANK]
-                    Add this argument to specify the type of pairwise cipher
+                --groupwise_cipher [BLANK]
+                        Add this argument to specify the type of groupwise cipher
 
-                DEFAULT
-                CCMP
-                TKIP
-                NONE
-                CCMP TKIP
-                CCMP-256
-                GCMP (wpa3)
-                GCMP-256 (wpa3)
-                CCMP/GCMP-256 (wpa3)
+                    DEFAULT
+                    CCMP
+                    WEP104
+                    WEP40
+                    GTK_NOT_USED
+                    GCMP-256 (wpa3)
+                    CCMP-256 (wpa3)
+                    GCMP/CCMP-256 (wpa3)
+                    All
 
-            --groupwise_cipher [BLANK]
-                    Add this argument to specify the type of groupwise cipher
+                --eap_identity <eap_identity>
+                        Add this argument to specify the username of radius server
 
-                DEFAULT
-                CCMP
-                WEP104
-                WEP40
-                GTK_NOT_USED
-                GCMP-256 (wpa3)
-                CCMP-256 (wpa3)
-                GCMP/CCMP-256 (wpa3)
-                All
+                --eap_password <eap_password>
+                        Add this argument to specify the password of radius server
 
-            --eap_identity <eap_identity>
-                    Add this argument to specify the username of radius server
+                --pk_passwd <private_key_passsword>
+                        Add this argument to specify the private key password
+                        Required only for TLS
 
-            --eap_password <eap_password>
-                    Add this argument to specify the password of radius server
+                --ca_cert <path_to_certificate>
+                        Add this argument to specify the certificate path
+                        Required only for TLS
 
-            --pk_passwd <private_key_passsword>
-                    Add this argument to specify the private key password
-                    Required only for TLS
+                example:
+                        /home/lanforge/ca.pem
 
-            --ca_cert <path_to_certificate>
-                    Add this argument to specify the certificate path
-                    Required only for TLS
+                --private_key <path_to_private_key>
+                        Add this argument to specify the private key path
+                        Required only for TLS
 
-            example:
-                    /home/lanforge/ca.pem
+                example:
+                        /home/lanforge/client.p12
 
-            --private_key <path_to_private_key>
-                    Add this argument to specify the private key path
-                    Required only for TLS
+                --key_mgmt < SAE | FT-SAE (11r) >
+                        Add this flag to give the key management value
 
-            example:
-                    /home/lanforge/client.p12
+                    DEFAULT
+                    NONE
+                    WPA-PSK
+                    FT-PSK (11r)
+                    FT-EAP (11r)
+                    FT-SAE (11r)
+                    FT-SAE-EXT-KEY (11r)
+                    FT-EAP-SHA384 (11r)
+                    WPA-EAP
+                    OSEN
+                    IEEE8021X
+                    WPA-PSK-SHA256
+                    WPA-EAP-SHA256
+                    PSK & EAP 128
+                    PSK & EAP 256
+                    PSK & EAP 128/256
+                    SAE
+                    SAE-EXT-KEY
+                    WPA-EAP-SUITE-B
+                    WPA-EAP-SUITE-B-192
+                    FILS-SHA256
+                    FILS-SHA384
+                    OWE
 
-            --key_mgmt < SAE | FT-SAE (11r) >
-                    Add this flag to give the key management value
+    STATUS: Functional
 
-                DEFAULT
-                NONE
-                WPA-PSK
-                FT-PSK (11r)
-                FT-EAP (11r)
-                FT-SAE (11r)
-                FT-SAE-EXT-KEY (11r)
-                FT-EAP-SHA384 (11r)
-                WPA-EAP
-                OSEN
-                IEEE8021X
-                WPA-PSK-SHA256
-                WPA-EAP-SHA256
-                PSK & EAP 128
-                PSK & EAP 256
-                PSK & EAP 128/256
-                SAE
-                SAE-EXT-KEY
-                WPA-EAP-SUITE-B
-                WPA-EAP-SUITE-B-192
-                FILS-SHA256
-                FILS-SHA384
-                OWE
+    VERIFIED_ON:   9-JUN-2023,
+                GUI Version:  5.4.6
+                Kernel Version: 5.19.17+
 
-STATUS: Functional
+    LICENSE:
+            Free to distribute and modify. LANforge systems must be licensed.
+            Copyright 2023 Candela Technologies Inc
 
-VERIFIED_ON:   9-JUN-2023,
-             GUI Version:  5.4.6
-             Kernel Version: 5.19.17+
+    INCLUDE_IN_README: False
 
-LICENSE:
-          Free to distribute and modify. LANforge systems must be licensed.
-          Copyright 2023 Candela Technologies Inc
-
-INCLUDE_IN_README: False
-
-''')
+    ''')
     required = parser.add_argument_group('required arguments')
     required.add_argument('--start_id',
                           help='Specify the station starting id \n e.g: --start_id <value> default 0',
@@ -1102,6 +1109,10 @@ INCLUDE_IN_README: False
                           help="Specify a custom WiFi command to execute. For example: --command 'firefox <gateway ip>'."
                                "This will run the specified command using: sudo ./vrf_exec.bash <station_name> <your_command>."
                           )
+    optional.add_argument("--mac",
+                          type=str,
+                          help="MAC address to use as the base for station MACs.  For example, \"00:11:22:33:44:55\".  Default is to use LANforge's default.",
+                          default="xx:xx:xx:*:*:xx")
     return parser.parse_args()
 
 
@@ -1158,31 +1169,27 @@ def main():
     logger_config.set_json(json_file=args.lf_logger_config_json)
 
     station_list = []
-    radio, ssid, security, password = [], [], [], []
-    radio_list, num_sta_list, ssid_list, password_list, security_list = [], [], [], [], []
+    radio, ssid, security, password, mac = [], [], [], [], []
+    radio_list, num_sta_list, ssid_list, password_list, security_list, mac_list = [], [], [], [], [], []
     eap_method_list, eap_identity_list, eap_anonymous_identity_list, eap_password_list = [], [], [], []
     eap_phase1_list, eap_phase2_list, pk_passwd_list, ca_cert_list = [], [], [], []
     private_key_list, key_mgmt_list, pairwise_cipher_list, groupwise_cipher_list = [], [], [], []
     station_flag_list, mode_list, custom_wifi_cmd_list, extra_securities_list, ieee80211w_list = [], [], [], [], []
 
     for radio_ in args.radios:
-        radio_keys = ['radio', 'security', 'ssid', 'passwd', 'num_sta']
+        print(radio_)
+
+        radio_keys = ['radio', 'security', 'ssid', 'passwd','mac', 'num_sta']
         logger.info("radio_dict before format {}".format(radio_))
-        radio_info_dict = dict(
-            map(
-                lambda x: x.split('=='),
-                str(radio_).replace(
-                    '"',
-                    '').replace(
-                    '[',
-                    '').replace(
-                    ']',
-                    '').replace(
-                    "'",
-                    "").replace(
-                    ",",
-                    " ").split()))
+        radio_str = str(radio_).strip("[]").replace("'", "").replace('"', '')
+
+        try:
+            radio_info_dict = dict(item.split("==", 1) for item in radio_str.split(",") if "==" in item)
+        except ValueError as e:
+            logger.error(f"Error parsing radio string '{radio_str}': {e}")
+            sys.exit(1)
         logger.info("radio_dict after format {}".format(radio_info_dict))
+        print(radio_info_dict," radio_info_dict radio_info_dict radio_info_dict")
         for key in radio_keys:
             if key not in radio_info_dict:
                 if hasattr(args, f'{key}'):
@@ -1197,6 +1204,7 @@ def main():
         ssid_list.append(radio_info_dict.get('ssid'))
         password_list.append(radio_info_dict.get('passwd'))
         security_list.append(radio_info_dict.get('security'))
+        mac_list.append(radio_info_dict.get('mac'))  #added mac option
         if 'extra_securities' in radio_info_dict:
             extra_securities_list.append(radio_info_dict['extra_securities'])
         else:
@@ -1289,28 +1297,43 @@ def main():
     clean_once = False
     station_data = {}
     create_station = None
-    for (radio, num_sta, ssid, password, security, eap_method, eap_identity, eap_anonymous_identity, eap_password,
+    for (radio, num_sta, ssid, password, security, mac, eap_method, eap_identity, eap_anonymous_identity, eap_password,
          eap_phase1, eap_phase2, pk_passwd, ca_cert, private_key, key_mgmt, pairwise_cipher, groupwise_cipher,
          station_flag, mode, wifi_cmd, extra_securities, ieee80211w) \
-            in zip(radio_list, num_sta_list, ssid_list, password_list, security_list, eap_method_list,
+            in zip(radio_list, num_sta_list, ssid_list, password_list, security_list, mac_list, eap_method_list,
                    eap_identity_list, eap_anonymous_identity_list, eap_password_list, eap_phase1_list, eap_phase2_list,
                    pk_passwd_list, ca_cert_list, private_key_list, key_mgmt_list, pairwise_cipher_list,
                    groupwise_cipher_list, station_flag_list, mode_list, custom_wifi_cmd_list, extra_securities_list, ieee80211w_list):
         end_id = start_id + num_sta - 1
+        
+        mac_l = []
         sta_list = LFUtils.port_name_series(prefix="sta",
                                             start_id=start_id,
                                             end_id=end_id,
                                             padding_number=10000,
                                             radio=radio)
-
+        print(radio, " radio radio radio radio radio radio radio")
         print("station_list {}".format(sta_list))
+        #increment mac for each station
+        if mac!="xx:xx:xx:*:*:xx":
+            mac_parts = [int(x, 16) for x in mac.split(':')]
+            base = (mac_parts[-2] << 8) + mac_parts[-1]  # Combine last 2 octets as integer
+            for i in range(num_sta):
+                new_val = (base + i) & 0xFFFF  # wrap around 16 bits if needed
+                new_mac_parts = mac_parts[:-2] + [(new_val >> 8) & 0xFF, new_val & 0xFF]
+                new_mac = ':'.join(f'{x:02x}' for x in new_mac_parts)
+                mac_l.append(new_mac)
+        else:
+            mac_l=mac
         station_list.extend(sta_list)
+        
         create_station = CreateStation(_host=args.mgr,
                                        _port=args.mgr_port,
                                        _bssid=args.bssid,
                                        _ssid=ssid,
                                        _password=password,
                                        _security=security,
+                                       _mac=mac_l,    #added mac option
                                        _eap_method=eap_method,
                                        _eap_identity=eap_identity,
                                        _eap_anonymous_identity=eap_anonymous_identity,
@@ -1348,7 +1371,6 @@ def main():
 
                 logging.info('Cleanup Successful')
                 clean_once = True
-
         else:
             already_available_stations = create_station.get_station_list()
             if len(already_available_stations) > 0:
