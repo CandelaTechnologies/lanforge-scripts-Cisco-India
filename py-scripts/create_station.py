@@ -678,6 +678,23 @@ class CreateStation(Realm):
             if ('sta' in list(interface_name.keys())[0]):
                 available_stations.append(list(interface_name.keys())[0])
         return (available_stations)
+    def get_station_list_mac(self):
+        response = super().json_get("/port/list?fields=_links,alias,device,port+type,mac")
+        interfaces = response.get('interfaces', [])
+        available_stations = []
+
+        for interface in interfaces:
+            for name, details in interface.items():
+                port_type = details.get('port type', '').upper()
+                if port_type == 'WIFI-STA' or 'sta' in name:
+                    available_stations.append({
+                        'name': name,
+                        'alias': details.get('alias'),
+                        'mac': details.get('mac'),
+                        'port_type': port_type
+                    })
+
+        return available_stations
 
 def parse_args():
     parser = LFCliBase.create_basic_argparse(  # see create_basic_argparse in ../py-json/LANforge/lfcli_base.py
@@ -1372,14 +1389,53 @@ def main():
                 logging.info('Cleanup Successful')
                 clean_once = True
         else:
-            already_available_stations = create_station.get_station_list()
-            if len(already_available_stations) > 0:
-                used_indices = [int(station_id.split('sta')[1]) for station_id in already_available_stations]
-                for new_station in sta_list:
-                    if new_station in already_available_stations:
-                        print('Some stations are already existing in the LANforge from the given start id.')
-                        print('You can create stations from the start id {}'.format(max(used_indices) + 1))
-                        exit(1)
+            if mac!="xx:xx:xx:*:*:xx":
+                already_available_stations = create_station.get_station_list_mac()
+                print(already_available_stations, " already_available_stations already_available_stations")
+                existing_names = [sta['name'] for sta in already_available_stations]
+                existing_macs = {sta['mac'].lower() for sta in already_available_stations}
+                print(existing_macs, " existing_macs in already_available_stations")
+                conflicting_macs = []
+                # Check each new MAC with existing MAC
+                for mac in mac_l:
+                    if mac.lower() in existing_macs:
+                        conflicting_macs.append(mac)
+                if len(conflicting_macs)>0:
+                    print("Conflicting MACs found:", conflicting_macs)
+                    exit(1)
+                else:
+                    print("No MAC conflicts detected.")
+
+                print(existing_names, "already_available_stations")
+                if not existing_names:
+                    return  # nothing to check
+                # Extract numeric indices from existing stations
+                used_indices = []
+                for sta in existing_names:
+                    # assume format like '1.1.sta0000'
+                    if 'sta' in sta:
+                        try:
+                            idx = int(sta.split('sta')[-1])
+                            used_indices.append(idx)
+                        except ValueError:
+                            continue
+
+                # Find duplicates
+                duplicates = [sta for sta in sta_list if sta in existing_names]
+
+                if duplicates:
+                    print(f"Some stations already exist in LANforge: {duplicates}")
+                    print(f"You can start creating new stations from sta{max(used_indices) + 1:04d}")
+                    raise SystemExit(1)
+            else:
+                already_available_stations = create_station.get_station_list()
+                if len(already_available_stations) > 0:
+                    used_indices = [int(station_id.split('sta')[1]) for station_id in already_available_stations]
+                    for new_station in sta_list:
+                        if new_station in already_available_stations:
+                            print('Some stations are already existing in the LANforge from the given start id.')
+                            print('You can create stations from the start id {}'.format(max(used_indices) + 1))
+                            exit(1)
         create_station.modify_radio(mgr=args.mgr,
                                     radio=radio,
                                     antenna=args.radio_antenna,
