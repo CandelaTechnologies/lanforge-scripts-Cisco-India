@@ -415,8 +415,8 @@ class CreateStation(Realm):
         self.set_txo_data = _set_txo_data
         self.custom_wifi_cmd = _custom_wifi_cmd
         self.command = _command
-        self.generic_endps_profile = self.new_generic_endp_profile()
-        self.generic_endps_profile.type = 'generic'
+        # self.generic_endps_profile = self.new_generic_endp_profile()
+        # self.generic_endps_profile.type = 'generic'
         # self.generic_endps_profile.name_prefix  = "zoom"
         self.station_profile = self.new_station_profile()
         self.station_profile.lfclient_url = self.lfclient_url
@@ -1096,6 +1096,11 @@ INCLUDE_IN_README: False
     optional.add_argument("--cleanup",
                           help='Add this flag to clean up stations after creation',
                           action='store_true')
+    parser.add_argument("--clean_specific",
+                        help='Provide stations (comma separated) to clean up those stations before creation\n'
+                            'For example, "--clean_specific 1.1.sta0000,1.1.sta0001"\n'
+                            'Note for --clean_specific "--no_pre_cleanup" flag need to be specified',
+                        )
     optional.add_argument("--custom_wifi_cmd",
                           help="Mention the custom wifi command.")
     optional.add_argument("--command",
@@ -1335,19 +1340,14 @@ def main():
                                        _debug_on=args.debug,
                                        _ieee80211w=ieee80211w,
                                        _extra_securities=extra_securities)
-        if not clean_once and not args.no_pre_cleanup:
-            if not args.no_pre_cleanup:
-                create_station.cleanup()
-                for station in sta_list:
-                    logging.info('Removing the station {} if exists'.format(station))
-                    create_station.generic_endps_profile.created_cx.append(
-                        'CX_generic-{}'.format(station.split('.')[2]))
-                    create_station.generic_endps_profile.created_endp.append(
-                        'generic-{}'.format(station.split('.')[2]))
-                    create_station.rm_port(station, check_exists=True)
+        if args.clean_specific and args.no_pre_cleanup:
+            stations_to_clean = [station.strip() for station in args.clean_specific.split(',')]
+            for station in stations_to_clean:
+                logger.info('Removing the specific station {} if exists'.format(station))
+                create_station.rm_port(station, check_exists=True)
 
-                logging.info('Cleanup Successful')
-                clean_once = True
+        if not args.no_pre_cleanup:
+            create_station.cleanup()
 
         else:
             already_available_stations = create_station.get_station_list()
