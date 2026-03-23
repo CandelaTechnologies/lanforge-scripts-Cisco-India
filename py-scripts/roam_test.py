@@ -8,7 +8,7 @@ import sys
 import argparse
 import time
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import importlib
 import shutil
 import pandas as pd
@@ -72,7 +72,14 @@ class Roam(Realm):
                  bg_scan='simple:10:-65:300:4',
                  disable_restart_dhcp=False,
                  softroam=True,
-                 real_devices=True
+                 real_devices=True,
+                 skip_atten=False,
+                 extra_security=None,
+                 disable_mlo=False,
+                 enable_pkc=False,
+                 get_stats=False,
+                 mlo=False,
+                 eap_password=None
                  ):
         super().__init__(lanforge_ip, port)
 
@@ -81,6 +88,13 @@ class Roam(Realm):
         self.upstream = upstream
         self.tshark_process = None
 
+        self.skip_atten = skip_atten
+        self.extra_security = extra_security
+        self.disable_mlo = disable_mlo
+        self.enable_pkc = enable_pkc
+        self.get_stats = get_stats
+        self.mlo = mlo
+        self.eap_password = eap_password
         self.attenuators = attenuators
         self.step = step
         self.max_attenuation = max_attenuation
@@ -130,6 +144,12 @@ class Roam(Realm):
         output = []
         self.atten_serial_ = []
         self.roam_timeout = roam_timeout
+        self.staConnect = sta_connect.StaConnect2(host=self.lanforge_ip, port=self.port,
+                                                  outfile="sta_connect2.csv")
+
+        if self.skip_atten:
+            self.sta_type = "neither"
+            return
 
         # if (len(self.attenuators) == 1):
         #     logging.error('Cannot perform roaming with only one attenuator. Please provide atleast two attenuators.')
@@ -186,9 +206,6 @@ class Roam(Realm):
         self.monitor = self.new_wifi_monitor_profile(
             resource_=self.sniff_radio_resource, up_=False)
         self.create_monitor()
-
-        self.staConnect = sta_connect.StaConnect2(host=self.lanforge_ip, port=self.port,
-                                                  outfile="sta_connect2.csv")
 
         self.cx_profile = self.new_l3_cx_profile()
         self.cx_profile.host = self.lanforge_ip
@@ -434,6 +451,135 @@ class Roam(Realm):
                 sta_list.append(j)
         return sta_list
 
+    def format_mlo_data(self, data, timestamp=None):
+        if not timestamp:
+            timestamp = datetime.now()
+
+        print(f"\n[{timestamp.strftime('%Y-%m-%d %H:%M:%S')}]")
+
+        for station, links in data.items():
+            print(f"\nStation: {station}")
+            print("-" * 40)
+
+            if not isinstance(links, dict) or not links:
+                print("  No MLO links found")
+                continue
+
+            for link_name, link_data in links.items():
+                if not isinstance(link_data, dict):
+                    continue
+
+                channel = link_data.get("channel", "N/A")
+
+                print(f"\nLink: {link_name} | Channel: {channel}")
+
+                print(f"  Active        : {link_data.get('active', 'N/A')}")
+                print(f"  Tx Rate        : {link_data.get('tx rate', 'N/A')}")
+                print(f"  Rx Rate        : {link_data.get('rx rate', 'N/A')}")
+                print(f"  Bandwidth     : {link_data.get('bandwidth', 'N/A')} ")
+                print(f"  NSS           : {link_data.get('nss', 'N/A')}")
+                print(f"  Our Address   : {link_data.get('our address', 'N/A')}")
+                print(f"  Peer Address  : {link_data.get('peer address', 'N/A')}")
+                print(f"  Chain RSSI  : {link_data.get('chain rssi', 'N/A')}")
+
+    def get_mlo_stats(self, eid_list=None):
+        try:
+            mlo_data = self.json_get("mlo/all")["mlo_links"]
+        except BaseException:
+            logger.info("ERROR in MLO API")
+        result = {}
+        for idx in range(len(self.station_list)):
+            sta = self.station_list[idx]
+            result[sta] = {}
+            for data in mlo_data:
+                key = next(iter(data))
+                if eid_list[idx] in key:
+                    if key not in result[sta]:
+                        result[sta][key] = {}
+                    result[sta][key]["active"] = data[key]["active"]
+                    result[sta][key]["channel"] = data[key]["channel"]
+                    result[sta][key]["bandwidth"] = data[key]["bandwidth"]
+                    result[sta][key]["nss"] = data[key]["nss"]
+
+                    result[sta][key]["chain rssi"] = data[key]["chain rssi"]
+                    result[sta][key]["peer address"] = data[key]["peer address"]
+                    result[sta][key]["our address"] = data[key]["our address"]
+                    result[sta][key]["rx rate"] = data[key]["rx rate"]
+                    result[sta][key]["tx rate"] = data[key]["tx rate"]
+
+        return result
+
+    def get_eid_list(self):
+        eid_list = []
+        interfaces_dict = dict()
+        try:
+            port_data = self.json_get('/ports/all/')['interfaces']
+        except KeyError:
+            logger.error("Error: 'interfaces' key not found in port data")
+            exit(1)
+
+        for port in port_data:
+            interfaces_dict.update(port)
+        for sta in self.station_list:
+            if sta in interfaces_dict:
+                eid_list.append(interfaces_dict[sta]['port'])
+            else:
+                eid_list.append('-')
+        filtered_prefix_list = []
+        for eid in eid_list:
+            s = ""
+            for ch in eid:
+                if ch != "0":
+                    s += ch
+            filtered_prefix_list.append(s)
+        return filtered_prefix_list
+
+    def get_port_stats(self):
+
+        signal_list, ip_list, ap_list, mac_list, rx_rate_list = [], [], [], [], []
+        interfaces_dict = dict()
+        try:
+            port_data = self.json_get('/ports/all/')['interfaces']
+        except KeyError:
+            logger.error("Error: 'interfaces' key not found in port data")
+            exit(1)
+
+        for port in port_data:
+            interfaces_dict.update(port)
+        for sta in self.station_list:
+            if sta in interfaces_dict:
+                if "dBm" in interfaces_dict[sta]['signal']:
+                    signal_list.append(interfaces_dict[sta]['signal'].split(" ")[0])
+                else:
+                    signal_list.append(interfaces_dict[sta]['signal'])
+            else:
+                signal_list.append('-')
+        for sta in self.station_list:
+            if sta in interfaces_dict:
+                ip_list.append(interfaces_dict[sta]['ip'])
+            else:
+                ip_list.append('-')
+        for sta in self.station_list:
+            if sta in interfaces_dict:
+                ap_list.append(interfaces_dict[sta]['ap'])
+            else:
+                ap_list.append('-')
+        for sta in self.station_list:
+            if sta in interfaces_dict:
+                mac_list.append(interfaces_dict[sta]['mac'])
+            else:
+                mac_list.append('-')
+        port_stats = {}
+        for idx in range(len(self.station_list)):
+            sta = self.station_list[idx]
+            port_stats[sta] = {}
+            port_stats[sta]["rssi"] = signal_list[idx]
+            port_stats[sta]["ip"] = ip_list[idx]
+            port_stats[sta]["mac"] = mac_list[idx]
+            port_stats[sta]["bssid"] = ap_list[idx]
+        return port_stats
+        # return signal_list, ip_list, mac_list, ap_list
+
     def create_clients(self, start_id=0, sta_prefix='sta'):
         station_profile = self.new_station_profile()
 
@@ -459,6 +605,66 @@ class Roam(Realm):
         station_list = LFUtils.portNameSeries(prefix_=sta_prefix, start_id_=start_id,
                                               end_id_=self.num_sta - 1, padding_number_=10000,
                                               radio=radio)
+        if self.skip_atten:
+            if self.key_management:
+                print(self.sta_type)
+                if not self.password:
+                    self.password = "[BLANK]"
+                if not self.key_management:
+                    self.key_management = "DEFAULT"
+                if not self.pair_cipher:
+                    self.pair_cipher = "DEFAULT"
+                if not self.group_cipher:
+                    self.group_cipher = "DEFAULT"
+                if not self.eap_method:
+                    self.eap_method = "DEFAULT"
+                if not self.identity:
+                    self.identity = ""
+                if not self.private_key:
+                    self.private_key = ""
+                if not self.ca_cert:
+                    self.ca_cert = ""
+                if not self.pk_passwd:
+                    self.pk_passwd = ""
+                station_profile.set_command_flag("add_sta", "80211u_enable", 0)
+                station_profile.set_command_flag("add_sta", "8021x_radius", 1)
+                if self.eap_method == "DEFAULT":
+                    station_profile.set_wifi_extra(key_mgmt=self.key_management,
+                                                   psk=self.password,
+                                                   pairwise=self.pair_cipher,
+                                                   group=self.group_cipher)
+                else:
+                    if self.eap_method == 'TLS':
+                        station_profile.set_wifi_extra(key_mgmt=self.key_management,
+                                                       pairwise=self.pair_cipher,
+                                                       group=self.group_cipher,
+                                                       eap=self.eap_method,
+                                                       identity=self.identity,
+                                                       passwd=self.password,
+                                                       private_key=self.private_key,
+                                                       ca_cert=self.ca_cert,
+                                                       pk_password=self.pk_passwd,
+                                                       phase1="",
+                                                       phase2="")
+                    elif self.eap_method == 'TTLS' or self.eap_method == 'PEAP':
+                        station_profile.set_wifi_extra(key_mgmt=self.key_management,
+                                                       pairwise=self.pair_cipher,
+                                                       group=self.group_cipher,
+                                                       eap=self.eap_method,
+                                                       identity=self.identity,
+                                                       passwd=self.eap_password,
+                                                       )
+                    elif self.eap_method != 'DEFAULT' or self.key_management != "DEFAULT":
+                        station_profile.set_wifi_extra(key_mgmt=self.key_management,
+                                                       pairwise=self.pair_cipher,
+                                                       group=self.group_cipher,
+                                                       psk=self.password,
+                                                       eap=self.eap_method,
+                                                       identity=self.identity,
+                                                       passwd=self.eap_password,
+                                                       )
+                # elif self.key_management == ""
+
         if self.sta_type == "normal":
             station_profile.set_command_flag("add_sta", "power_save_enable", 1)
             if not self.soft_roam:
@@ -473,7 +679,8 @@ class Roam(Realm):
 
         if self.sta_type == "11r-sae-802.1x":
             dut_passwd = "[BLANK]"
-        print("Security:- ", self.password)
+
+        # print("Security:- ", self.password)
         station_profile.use_security(self.security, self.ssid, self.password)
         station_profile.set_number_template("00")
 
@@ -491,7 +698,16 @@ class Roam(Realm):
             station_profile.set_command_flag("set_port", "dhcp", 1)
             station_profile.set_command_flag("set_port", "dhcp_rls", 1)
             station_profile.set_command_flag("set_port", "no_dhcp_conn", 1)
-            station_profile.set_command_flag("set_port", "skip_ifup_roam", 1)
+            if not self.skip_atten:
+                station_profile.set_command_flag("set_port", "skip_ifup_roam", 1)
+        if self.disable_mlo and not self.mlo:
+            station_profile.set_command_flag("add_sta", "disable-mlo", 1)
+        if self.extra_security:
+            station_profile.add_security_extra(security=self.extra_security)
+        if self.enable_pkc:
+            station_profile.set_command_flag("add_sta", "80211r_pmska_cache", 1)
+
+        # For FT-PSK
         if self.sta_type == "11r":
             station_profile.set_command_flag("add_sta", "80211u_enable", 0)
             station_profile.set_command_flag("add_sta", "8021x_radius", 1)
@@ -530,8 +746,9 @@ class Roam(Realm):
                                            ipaddr_type_avail="NA",
                                            network_auth_type="NA",
                                            anqp_3gpp_cell_net="NA")
+        # For FT-SAE
         if self.sta_type == "11r-sae":
-            station_profile.set_command_flag("add_sta", "ieee80211w", 2)
+            station_profile.set_command_param("add_sta", "ieee80211w", 2)
             station_profile.set_command_flag("add_sta", "80211u_enable", 0)
             station_profile.set_command_flag("add_sta", "8021x_radius", 1)
             if not self.soft_roam:
@@ -568,7 +785,7 @@ class Roam(Realm):
                                            anqp_3gpp_cell_net="NA")
         if self.sta_type == "11r-sae-802.1x":
             station_profile.set_command_flag("set_port", "rpt_timer", 1)
-            station_profile.set_command_flag("add_sta", "ieee80211w", 2)
+            station_profile.set_command_param("add_sta", "ieee80211w", 2)
             station_profile.set_command_flag("add_sta", "80211u_enable", 0)
             station_profile.set_command_flag("add_sta", "8021x_radius", 1)
             if not self.soft_roam:
@@ -603,9 +820,10 @@ class Roam(Realm):
                                            ipaddr_type_avail="NA",
                                            network_auth_type="NA",
                                            anqp_3gpp_cell_net="NA")
+        # FT-EAP
         if self.sta_type == "11r-wpa2-802.1x":
             station_profile.set_command_flag("set_port", "rpt_timer", 1)
-            station_profile.set_command_flag("add_sta", "ieee80211w", 1)
+            station_profile.set_command_param("add_sta", "ieee80211w", 1)
             station_profile.set_command_flag("add_sta", "80211u_enable", 0)
             station_profile.set_command_flag("add_sta", "8021x_radius", 1)
             if not self.soft_roam:
@@ -640,9 +858,9 @@ class Roam(Realm):
                                            ipaddr_type_avail="NA",
                                            network_auth_type="NA",
                                            anqp_3gpp_cell_net="NA")
-
+        # FT-SAE-EXT-KEY
         if self.sta_type == "11r-sae-ext-key":
-            station_profile.set_command_flag("add_sta", "ieee80211w", 2)
+            station_profile.set_command_param("add_sta", "ieee80211w", 2)
             station_profile.set_command_flag("add_sta", "80211u_enable", 0)
             station_profile.set_command_flag("add_sta", "8021x_radius", 1)
             if not self.soft_roam:
@@ -681,7 +899,7 @@ class Roam(Realm):
         # new_added
         if self.sta_type == "custom":
             station_profile.set_command_flag("set_port", "rpt_timer", 1)
-            station_profile.set_command_flag("add_sta", "ieee80211w", 1)
+            station_profile.set_command_param("add_sta", "ieee80211w", 1)
             station_profile.set_command_flag("add_sta", "80211u_enable", 0)
             station_profile.set_command_flag("add_sta", "8021x_radius", 1)
             if not self.soft_roam:
@@ -708,7 +926,7 @@ class Roam(Realm):
         logging.info("Waiting for ports to appear")
         self.wait_until_ports_appear(sta_list=station_list)
 
-        if self.soft_roam:
+        if (self.soft_roam and not self.skip_atten) or self.bg_scan is not None:
             for sta_name in station_list:
                 sta = sta_name.split(".")[2]  # TODO:  Use name_to_eid
                 bgscan = {
@@ -811,7 +1029,7 @@ class Roam(Realm):
                                         'BSSID after iteration': current_step_bssid_data[bssid_index],
                                         'Signal Strength': self.get_port_data(self.station_list[bssid_index], 'signal'),
                                         'Status': 'PASS' if before_iteration_bssid_data[bssid_index] !=
-                                                            current_step_bssid_data[bssid_index] else 'FAIL'
+                                        current_step_bssid_data[bssid_index] else 'FAIL'
                                     }
                                     if self.station_list[bssid_index] not in self.roam_bssid_info:
                                         self.roam_bssid_info[self.station_list[bssid_index]] = {
@@ -907,7 +1125,7 @@ class Roam(Realm):
             # Get the current working directory
             current_directory = os.getcwd()
             print("current_directory", current_directory)
-            #base_dir = '/home/lanforge'
+            # base_dir = '/home/lanforge'
             source = os.path.join(current_directory, f'output.csv')
             destination_dir = os.path.join(current_directory)
             destination = os.path.join(destination_dir, self.report_path_date_time, f'output.csv')
@@ -1068,9 +1286,9 @@ class Roam(Realm):
 
         # objective and description
         report.set_obj_html(_obj_title='Objective',
-                            _obj='''The Candela Roam test uses the 802.11r Fast BSS Transition roam method to create and roam multiple WiFi stations 
-                            between two or more APs with the same SSID on either the same channel or different channels. The user can run 
-                            multiple roam iterations over extended durations,with the test measuring the roam time and average roam time for each station. 
+                            _obj='''The Candela Roam test uses the 802.11r Fast BSS Transition roam method to create and roam multiple WiFi stations
+                            between two or more APs with the same SSID on either the same channel or different channels. The user can run
+                            multiple roam iterations over extended durations,with the test measuring the roam time and average roam time for each station.
                             The test can be conducted with different security methods, allowing users to compare roaming performance.By default,the pass/fail
                             threshold for the roam time is set to 50 milliseconds.Additionally, a customizable roam threshold option allows users to adjust threshold values as needed.
                             ''')
@@ -1456,6 +1674,20 @@ class Roam(Realm):
         report.write_html()
         report.write_pdf()
 
+    def wait_untill_mlo_tab_appears(self):
+        logger.info("Waiting until MLO tab appears in lanforge gui")
+        retries = 1
+        total_retiries = 60
+        while retries <= total_retiries:
+            resp = self.json_get("mlo")
+            if resp is not None:
+                logger.info("MLO links tab found, collecting stats now")
+                return True
+            time.sleep(1)
+            retries += 1
+        logger.info("MLO links tab didn't appeared in lanforge, please check station config")
+        return False
+
 
 def main():
     help_summary = '''
@@ -1499,12 +1731,15 @@ def main():
     required.add_argument('--eap_method',
                           help='EAP Method for EAP',
                           type=str,
-                          default="TTLS",
+                          default="DEFAULT",
+                          required=False)
+    required.add_argument('--eap_password',
+                          help='Key/Password for the SSID',
                           required=False)
     required.add_argument('--key_management',
                           help='Key Management for EAP',
                           type=str,
-                          default="DEFAULT",
+                          default=None,
                           required=False)
     required.add_argument('--ca_cert',
                           help='ca-cert',
@@ -1521,12 +1756,12 @@ def main():
                           type=str,
                           default="whatever",
                           required=False)
-    required.add_argument('--pair_cipher',
+    required.add_argument('--pairwise_cipher',
                           help='Pair Cipher for Ent',
                           type=str,
                           default="[BLANK]",
                           required=False)
-    required.add_argument('--group_cipher',
+    required.add_argument('--groupwise_cipher',
                           help='Group Cipher for Ent',
                           type=str,
                           default="[BLANK]",
@@ -1565,8 +1800,7 @@ def main():
                           default=95)
     optional.add_argument('--attenuators',
                           nargs='+',
-                          help='Attenuator serials',
-                          required=True)
+                          help='Attenuator serials',)
     optional.add_argument('--iterations',
                           help='Number of iterations to perform roam test',
                           type=int,
@@ -1583,6 +1817,10 @@ def main():
                           help='Channel',
                           type=str,
                           default='AUTO')
+    optional.add_argument('--extra_security',
+                          help='extra security , can be used for mixed type security',
+                          type=str,
+                          default=None)
     optional.add_argument('--frequency',
                           help='Frequency',
                           type=int,
@@ -1596,7 +1834,7 @@ def main():
     optional.add_argument('--bg_scan',
                           help='Background scan filter',
                           required=False,
-                          default='simple:10:-65:300:4')
+                          default=None)
     optional.add_argument('--sniff_radio',
                           help='Sniffer Radio',
                           default='1.1.wiphy0')
@@ -1611,6 +1849,22 @@ def main():
                         help='Show summary of what this script does',
                         default=None,
                         action="store_true")
+    parser.add_argument('--skip_atten',
+                        help='To create only clients',
+                        action='store_true')
+    parser.add_argument('--disable_mlo',
+                        help='Disable mlo in station configuration',
+                        action='store_true')
+    parser.add_argument('--enable_pkc',
+                        help='enable pkc in station configuration',
+                        action='store_true')
+    parser.add_argument('--get_stats',
+                        help='enable this flag to collect station stats',
+                        action='store_true')
+    parser.add_argument('--mlo',
+                        help='enable this flag to collect MLO link station stats',
+                        action='store_true')
+    parser.add_argument('--duration', help='Sniff duration', type=int, default=300)
 
     # logging configuration:
     parser.add_argument('--log_level', default=None,
@@ -1657,7 +1911,12 @@ def main():
             frequency=args.frequency,
             iterations=args.iterations,
             roam_timeout=args.roam_timeout,
-            bg_scan=args.bg_scan
+            bg_scan=args.bg_scan,
+            skip_atten=args.skip_atten,
+            get_stats=args.get_stats,
+            duration=args.duration,
+            mlo=args.mlo,
+            eap_password=args.eap_password
         )
         roam_test.station_list = stations
         logging.info('Selected stations\t{}'.format(stations))
@@ -1686,8 +1945,8 @@ def main():
             ca_cert=args.ca_cert,
             private_key=args.private_key,
             pk_passwd=args.pk_passwd,
-            pair_cipher=args.pair_cipher,
-            group_cipher=args.group_cipher,
+            pair_cipher=args.pairwise_cipher,
+            group_cipher=args.groupwise_cipher,
             # new complete
             ttls_pass=args.ttls_pass,
             sta_type=args.sta_type,
@@ -1697,16 +1956,55 @@ def main():
             iterations=args.iterations,
             roam_timeout=args.roam_timeout,
             bg_scan=args.bg_scan,
-            disable_restart_dhcp=disable_restart_dhcp
+            disable_restart_dhcp=disable_restart_dhcp,
+            skip_atten=args.skip_atten,
+            extra_security=args.extra_security,
+            disable_mlo=args.disable_mlo,
+            enable_pkc=args.enable_pkc,
+            get_stats=args.get_stats,
+            duration=args.duration,
+            mlo=args.mlo,
+            eap_password=args.eap_password
         )
-        logging.info(
-            'Starting sniffer with roam_test.pcap')
-        roam_test.start_sniff(
-            capname='roam_test.pcap')
+        if not args.skip_atten:
+            logging.info(
+                'Starting sniffer with roam_test.pcap')
+            roam_test.start_sniff(
+                capname='roam_test.pcap')
 
         roam_test.create_clients()
-        # roam_test.create_cx()
-        # roam_test.start_cx()
+    if roam_test.skip_atten:
+        if roam_test.get_stats:
+            if not roam_test.mlo:
+                start_time = datetime.now()
+                end_time = start_time + timedelta(seconds=int(roam_test.duration))
+                curr_time = datetime.now()
+                my_dict = {}
+                while curr_time < end_time:
+                    port_stats = roam_test.get_port_stats()
+                    my_dict[curr_time] = port_stats
+                    print(port_stats)
+                    time.sleep(1)
+                    curr_time = datetime.now()
+                print(my_dict)
+            else:
+                tab_exists = roam_test.wait_untill_mlo_tab_appears()
+                if not tab_exists:
+                    exit(0)
+                start_time = datetime.now()
+                end_time = start_time + timedelta(seconds=int(roam_test.duration))
+                eid_list = roam_test.get_eid_list()
+                my_dict = {}
+                curr_time = datetime.now()
+                while curr_time < end_time:
+                    port_stats = roam_test.get_mlo_stats(eid_list)
+                    my_dict[curr_time] = port_stats
+                    # print(port_stats)
+                    roam_test.format_mlo_data(port_stats, curr_time)
+                    time.sleep(1)
+                    curr_time = datetime.now()
+
+        exit(0)
 
     if (roam_test.soft_roam):
         logging.info('Initiating soft roam test')
