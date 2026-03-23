@@ -553,7 +553,7 @@ lf_logger_config = importlib.import_module("py-scripts.lf_logger_config")
 LFUtils = importlib.import_module("py-json.LANforge.LFUtils")
 realm = importlib.import_module("py-json.realm")
 lf_attenuator = importlib.import_module("py-scripts.lf_atten_mod_test")
-modify_vap = importlib.import_module("py-scripts.modify_vap")
+# modify_vap = importlib.import_module("py-scripts.modify_vap")
 lf_modify_radio = importlib.import_module("py-scripts.lf_modify_radio")
 lf_cleanup = importlib.import_module("py-scripts.lf_cleanup")
 Realm = realm.Realm
@@ -568,6 +568,7 @@ class L3VariableTime(Realm):
     query data for relevant LANforge ports and traffic pairs during
     the test, and generate reports upon completion.
     """
+
     def __init__(self,
                  endp_types,
                  args,
@@ -1208,147 +1209,6 @@ class L3VariableTime(Realm):
         # if it is a dataplane test the side_a is not None and an ethernet port
         # if side_a is None then side_a is radios
         if not self.dataplane:
-            for (
-                    radio_,
-                    ssid_,
-                    ssid_password_,
-                    ssid_security_,
-                    mode_,
-                    enable_flags_,
-                    reset_port_enable_,
-                    reset_port_time_min_,
-                    reset_port_time_max_,
-                    key_mgmt_,
-                    pairwise_,
-                    group_,
-                    psk_,
-                    wep_key_,
-                    ca_cert_,
-                    eap_,
-                    identity_,
-                    anonymous_identity_,
-                    phase1_,
-                    phase2_,
-                    passwd_,
-                    pin_,
-                    pac_file_,
-                    private_key_,
-                    pk_password_,
-                    hessid_,
-                    realm_,
-                    client_cert_,
-                    imsi_,
-                    milenage_,
-                    domain_,
-                    roaming_consortium_,
-                    venue_group_,
-                    network_type_,
-                    ipaddr_type_avail_,
-                    network_auth_type_,
-                    anqp_3gpp_cell_net_,
-                    ieee80211w_) in zip(
-                    self.radio_name_list,
-                    self.ssid_list,
-                    self.ssid_password_list,
-                    self.ssid_security_list,
-                    self.wifi_mode_list,
-                    self.enable_flags_list,
-                    self.reset_port_enable_list,
-                    self.reset_port_time_min_list,
-                    self.reset_port_time_max_list,
-                    self.key_mgmt_list,
-                    self.pairwise_list,
-                    self.group_list,
-                    self.psk_list,
-                    self.wep_key_list,
-                    self.ca_cert_list,
-                    self.eap_list,
-                    self.identity_list,
-                    self.anonymous_identity_list,
-                    self.phase1_list,
-                    self.phase2_list,
-                    self.passwd_list,
-                    self.pin_list,
-                    self.pac_file_list,
-                    self.private_key_list,
-                    self.pk_password_list,
-                    self.hessid_list,
-                    self.realm_list,
-                    self.client_cert_list,
-                    self.imsi_list,
-                    self.milenage_list,
-                    self.domain_list,
-                    self.roaming_consortium_list,
-                    self.venue_group_list,
-                    self.network_type_list,
-                    self.ipaddr_type_avail_list,
-                    self.network_auth_type_list,
-                    self.anqp_3gpp_cell_net_list,
-                    self.ieee80211w_list
-            ):
-                station_profile = self.new_station_profile()
-                station_profile.lfclient_url = self.lfclient_url
-                station_profile.ssid = ssid_
-                station_profile.ssid_pass = ssid_password_
-                station_profile.security = ssid_security_
-                station_profile.number_template = self.number_template
-                station_profile.mode = mode_
-                station_profile.desired_add_sta_flags = enable_flags_.copy()
-                station_profile.desired_add_sta_flags_mask = enable_flags_.copy()
-
-                # set_wifi_extra
-                if key_mgmt_ != '[BLANK]':
-                    station_profile.set_wifi_extra(key_mgmt=key_mgmt_,
-                                                   pairwise=pairwise_,
-                                                   group=group_,
-                                                   psk=psk_,
-                                                   wep_key=wep_key_,
-                                                   ca_cert=ca_cert_,
-                                                   eap=eap_,
-                                                   identity=identity_,
-                                                   anonymous_identity=anonymous_identity_,
-                                                   phase1=phase1_,
-                                                   phase2=phase2_,
-                                                   passwd=passwd_,
-                                                   pin=pin_,
-                                                   pac_file=pac_file_,
-                                                   private_key=private_key_,
-                                                   pk_password=pk_password_,
-                                                   hessid=hessid_,
-                                                   realm=realm_,
-                                                   client_cert=client_cert_,
-                                                   imsi=imsi_,
-                                                   milenage=milenage_,
-                                                   domain=domain_,
-                                                   roaming_consortium=roaming_consortium_,
-                                                   venue_group=venue_group_,
-                                                   network_type=network_type_,
-                                                   ipaddr_type_avail=ipaddr_type_avail_,
-                                                   network_auth_type=network_auth_type_,
-                                                   anqp_3gpp_cell_net=anqp_3gpp_cell_net_)
-
-                    # Configure protected management frames (PMF)
-                    if ieee80211w_.lower() == 'disabled':
-                        station_profile.set_command_param("add_sta", "ieee80211w", 0)
-                    elif ieee80211w_.lower() == 'required':
-                        station_profile.set_command_param("add_sta", "ieee80211w", 2)
-                    else:
-                        # may want to set an error if not optional yet for now default to optional
-                        station_profile.set_command_param("add_sta", "ieee80211w", 1)
-
-                # place the enable and disable flags
-                # station_profile.desired_add_sta_flags = self.enable_flags
-                # station_profile.desired_add_sta_flags_mask = self.enable_flags
-                test_duration_sec = self.duration_time_to_seconds(self.test_duration)
-                reset_port_min_time_sec = self.duration_time_to_seconds(reset_port_time_min_)
-                reset_port_max_time_sec = self.duration_time_to_seconds(reset_port_time_max_)
-
-                station_profile.set_reset_extra(reset_port_enable=reset_port_enable_,
-                                                test_duration=test_duration_sec,
-                                                reset_port_min_time=reset_port_min_time_sec,
-                                                reset_port_max_time=reset_port_max_time_sec)
-                self.station_profiles.append(station_profile)
-
             # Use existing station list is similiar to no rebuild
             if self.use_existing_station_lists:
                 station_profile = self.new_station_profile()
@@ -1356,14 +1216,149 @@ class L3VariableTime(Realm):
                     station_profile.station_names.append(existing_station_list)
 
                 self.station_profiles.append(station_profile)
+            # if not exisiting then we need to create profiles for the virtual clients
+            else:
+                for (
+                        _radio_,
+                        ssid_,
+                        ssid_password_,
+                        ssid_security_,
+                        mode_,
+                        enable_flags_,
+                        reset_port_enable_,
+                        reset_port_time_min_,
+                        reset_port_time_max_,
+                        key_mgmt_,
+                        pairwise_,
+                        group_,
+                        psk_,
+                        wep_key_,
+                        ca_cert_,
+                        eap_,
+                        identity_,
+                        anonymous_identity_,
+                        phase1_,
+                        phase2_,
+                        passwd_,
+                        pin_,
+                        pac_file_,
+                        private_key_,
+                        pk_password_,
+                        hessid_,
+                        realm_,
+                        client_cert_,
+                        imsi_,
+                        milenage_,
+                        domain_,
+                        roaming_consortium_,
+                        venue_group_,
+                        network_type_,
+                        ipaddr_type_avail_,
+                        network_auth_type_,
+                        anqp_3gpp_cell_net_,
+                        ieee80211w_) in zip(
+                        self.radio_name_list,
+                        self.ssid_list,
+                        self.ssid_password_list,
+                        self.ssid_security_list,
+                        self.wifi_mode_list,
+                        self.enable_flags_list,
+                        self.reset_port_enable_list,
+                        self.reset_port_time_min_list,
+                        self.reset_port_time_max_list,
+                        self.key_mgmt_list,
+                        self.pairwise_list,
+                        self.group_list,
+                        self.psk_list,
+                        self.wep_key_list,
+                        self.ca_cert_list,
+                        self.eap_list,
+                        self.identity_list,
+                        self.anonymous_identity_list,
+                        self.phase1_list,
+                        self.phase2_list,
+                        self.passwd_list,
+                        self.pin_list,
+                        self.pac_file_list,
+                        self.private_key_list,
+                        self.pk_password_list,
+                        self.hessid_list,
+                        self.realm_list,
+                        self.client_cert_list,
+                        self.imsi_list,
+                        self.milenage_list,
+                        self.domain_list,
+                        self.roaming_consortium_list,
+                        self.venue_group_list,
+                        self.network_type_list,
+                        self.ipaddr_type_avail_list,
+                        self.network_auth_type_list,
+                        self.anqp_3gpp_cell_net_list,
+                        self.ieee80211w_list
+                ):
+                    station_profile = self.new_station_profile()
+                    station_profile.lfclient_url = self.lfclient_url
+                    station_profile.ssid = ssid_
+                    station_profile.ssid_pass = ssid_password_
+                    station_profile.security = ssid_security_
+                    station_profile.number_template = self.number_template
+                    station_profile.mode = mode_
+                    station_profile.desired_add_sta_flags = enable_flags_.copy()
+                    station_profile.desired_add_sta_flags_mask = enable_flags_.copy()
 
-            # Generate list of all stations, both created and existing
-            #
-            # Both are stored in 'self.station_profiles', but only
-            # the 'station_names' field is really valid for the existing
-            # stations profile
-            for station_profile in self.station_profiles:
-                self.station_names_list.extend(station_profile.station_names)
+                    # set_wifi_extra
+                    if key_mgmt_ != '[BLANK]':
+                        station_profile.set_wifi_extra(key_mgmt=key_mgmt_,
+                                                       pairwise=pairwise_,
+                                                       group=group_,
+                                                       psk=psk_,
+                                                       wep_key=wep_key_,
+                                                       ca_cert=ca_cert_,
+                                                       eap=eap_,
+                                                       identity=identity_,
+                                                       anonymous_identity=anonymous_identity_,
+                                                       phase1=phase1_,
+                                                       phase2=phase2_,
+                                                       passwd=passwd_,
+                                                       pin=pin_,
+                                                       pac_file=pac_file_,
+                                                       private_key=private_key_,
+                                                       pk_password=pk_password_,
+                                                       hessid=hessid_,
+                                                       realm=realm_,
+                                                       client_cert=client_cert_,
+                                                       imsi=imsi_,
+                                                       milenage=milenage_,
+                                                       domain=domain_,
+                                                       roaming_consortium=roaming_consortium_,
+                                                       venue_group=venue_group_,
+                                                       network_type=network_type_,
+                                                       ipaddr_type_avail=ipaddr_type_avail_,
+                                                       network_auth_type=network_auth_type_,
+                                                       anqp_3gpp_cell_net=anqp_3gpp_cell_net_)
+
+                        # Configure protected management frames (PMF)
+                        if ieee80211w_.lower() == 'disabled':
+                            station_profile.set_command_param("add_sta", "ieee80211w", 0)
+                        elif ieee80211w_.lower() == 'required':
+                            station_profile.set_command_param("add_sta", "ieee80211w", 2)
+                        else:
+                            # may want to set an error if not optional yet for now default to optional
+                            station_profile.set_command_param("add_sta", "ieee80211w", 1)
+
+                    # place the enable and disable flags
+                    # station_profile.desired_add_sta_flags = self.enable_flags
+                    # station_profile.desired_add_sta_flags_mask = self.enable_flags
+                    test_duration_sec = self.duration_time_to_seconds(self.test_duration)
+                    reset_port_min_time_sec = self.duration_time_to_seconds(reset_port_time_min_)
+                    reset_port_max_time_sec = self.duration_time_to_seconds(reset_port_time_max_)
+
+                    station_profile.set_reset_extra(reset_port_enable=reset_port_enable_,
+                                                    test_duration=test_duration_sec,
+                                                    reset_port_min_time=reset_port_min_time_sec,
+                                                    reset_port_max_time=reset_port_max_time_sec)
+                    self.station_profiles.append(station_profile)
+
         else:
             # Dataplane style test
             #
@@ -1798,6 +1793,7 @@ class L3VariableTime(Realm):
         self.station_count = 0
         self.udp_endps = []
         self.tcp_endps = []
+        self.lf_endps = []
         self.eth_endps = []
 
         if rebuild:
@@ -1881,6 +1877,20 @@ class L3VariableTime(Realm):
                             self.cx_names.append(these_cx)
 
         self.cx_count = self.cx_profile.get_cx_count()
+
+        # Generate list of all stations, both created and existing
+        #
+        # Both are stored in 'self.station_profiles', but only
+        # the 'station_names' field is really valid for the existing
+        # stations profile
+        for station_profile in self.station_profiles:
+            self.station_names_list.extend(station_profile.station_names)
+
+        # with changes that came in around 3/2025 the station_names_list was moved
+        # from start to build, since test l3 can do a rebuild due to being able to run
+        # multiple iterations thus the station list would grow there is a need
+        # on build to remove duplicates
+        self.station_names_list = list(set(self.station_names_list))
 
         if self.dataplane:
             self._pass(
@@ -2772,7 +2782,8 @@ class L3VariableTime(Realm):
             # maintainable
             if endp_type_present:
                 # note for multicast there is no a side traffic
-                if endp_data[endp_data_key]['type'] == 'Mcast':
+                # to get the only multicast and the create endpoints at the present moment
+                if endp_data[endp_data_key]['type'] == 'Mcast' and endp_data_key in self.multicast_profile.created_mc:
                     if endp_data[endp_data_key]['tos'] == 'BK':
                         # for multicast the logic is reversed. A is upstream for multicast, B is
                         # downstream for multicast
@@ -3319,7 +3330,8 @@ class L3VariableTime(Realm):
                 # for unicast the upstream is B and downstream is A
                 # note for B tx is download and rx is uploat
                 # TODO support  'LF'
-                elif endp_data[endp_data_key]['type'] == 'LF/TCP' or endp_data[endp_data_key]['type'] == 'LF/UDP':
+                # to get the present created endpoints data only instead of all
+                elif endp_data[endp_data_key]['type'] == 'LF/TCP' or endp_data[endp_data_key]['type'] == 'LF/UDP' and (endp_data_key in self.udp_endps or endp_data_key in self.tcp_endps or endp_data_key in self.lf_endps):
                     if endp_data[endp_data_key]['tos'] == 'BK':
                         if endp_data[endp_data_key]['a/b'] == "A":
                             self.bk_clients_A.append(endp_data[endp_data_key]['name'])
@@ -3863,7 +3875,7 @@ class L3VariableTime(Realm):
             # type field and tos not supported in 5.4.6 so this is for backward compatibility
             # Use the END name  for type and TOS
             else:
-                if 'MLT' in endp_data[endp_data_key]['name']:    # type
+                if 'MLT' in endp_data[endp_data_key]['name'] and endp_data_key in self.multicast_profile.created_mc:    # type MLT and also only present created endpoints instead of all
                     if 'BK' in endp_data[endp_data_key]['name']:  # tos
                         # for multicast the logic is reversed. A is upstream for multicast, B is
                         # downstream for multicast
@@ -4409,531 +4421,533 @@ class L3VariableTime(Realm):
                 # for unicast the upstream is B and downstream is A
                 # note for B tx is download and rx is uploat
                 else:
-                    if 'BK' in endp_data[endp_data_key]['name']:
-                        if endp_data[endp_data_key]['a/b'] == "A":
-                            self.bk_clients_A.append(endp_data[endp_data_key]['name'])
-                            self.bk_tos_ul_A.append(endp_data[endp_data_key]["tx rate"])
-                            self.bk_tos_dl_A.append(endp_data[endp_data_key]["rx rate"])
-                            self.bk_rx_drop_percent_A.append(endp_data[endp_data_key]["rx drop %"])
-                            self.bk_port_protocol_A.append('Uni-Cast')
+                    # to only get the present created endpoints insted of all
+                    if endp_data_key in self.udp_endps or endp_data_key in self.tcp_endps or endp_data_key in self.lf_endps:
+                        if 'BK' in endp_data[endp_data_key]['name']:
+                            if endp_data[endp_data_key]['a/b'] == "A":
+                                self.bk_clients_A.append(endp_data[endp_data_key]['name'])
+                                self.bk_tos_ul_A.append(endp_data[endp_data_key]["tx rate"])
+                                self.bk_tos_dl_A.append(endp_data[endp_data_key]["rx rate"])
+                                self.bk_rx_drop_percent_A.append(endp_data[endp_data_key]["rx drop %"])
+                                self.bk_port_protocol_A.append('Uni-Cast')
 
-                            # Report Table information
-                            # use the eid to get the hostname and channel
-                            eid_tmp_resource = str(self.name_to_eid(endp_data[endp_data_key]['eid'])[
-                                                   0]) + '.' + str(self.name_to_eid(endp_data[endp_data_key]['eid'])[1])
-                            # look up the resource
-                            resource_found = False
-                            for resource_data in self.resource_data['resources']:
-                                resource_data_key = list(resource_data.keys())[0]
-                                if resource_data_key == eid_tmp_resource:
-                                    resource_found = True
-                                    self.bk_resource_host_A.append(resource_data[resource_data_key]['hostname'])
-                                    self.bk_resource_hw_ver_A.append(resource_data[resource_data_key]['hw version'])
-                                    self.bk_resource_eid_A.append(resource_data[resource_data_key]['eid'])
-                                    self.bk_resource_kernel_A.append(resource_data[resource_data_key]['kernel'])
-                                    client_alias = self.create_resource_alias(
-                                        eid=resource_data[resource_data_key]['eid'],
-                                        host=resource_data[resource_data_key]['hostname'],
-                                        hw_version=resource_data[resource_data_key]['hw version'],
-                                        kernel=resource_data[resource_data_key]['kernel'])
-                                    self.bk_resource_alias_A.append(client_alias)
+                                # Report Table information
+                                # use the eid to get the hostname and channel
+                                eid_tmp_resource = str(self.name_to_eid(endp_data[endp_data_key]['eid'])[
+                                    0]) + '.' + str(self.name_to_eid(endp_data[endp_data_key]['eid'])[1])
+                                # look up the resource
+                                resource_found = False
+                                for resource_data in self.resource_data['resources']:
+                                    resource_data_key = list(resource_data.keys())[0]
+                                    if resource_data_key == eid_tmp_resource:
+                                        resource_found = True
+                                        self.bk_resource_host_A.append(resource_data[resource_data_key]['hostname'])
+                                        self.bk_resource_hw_ver_A.append(resource_data[resource_data_key]['hw version'])
+                                        self.bk_resource_eid_A.append(resource_data[resource_data_key]['eid'])
+                                        self.bk_resource_kernel_A.append(resource_data[resource_data_key]['kernel'])
+                                        client_alias = self.create_resource_alias(
+                                            eid=resource_data[resource_data_key]['eid'],
+                                            host=resource_data[resource_data_key]['hostname'],
+                                            hw_version=resource_data[resource_data_key]['hw version'],
+                                            kernel=resource_data[resource_data_key]['kernel'])
+                                        self.bk_resource_alias_A.append(client_alias)
 
-                                    break
+                                        break
 
-                            if resource_found is False:
-                                self.bk_resource_host_A.append('NA')
-                                self.bk_resource_hw_ver_A.append('NA')
-                                self.bk_resource_eid_A.append('NA')
-                                self.bk_resource_kernel_A.append('NA')
-                                self.bk_resource_alias_A.append('NA')
+                                if resource_found is False:
+                                    self.bk_resource_host_A.append('NA')
+                                    self.bk_resource_hw_ver_A.append('NA')
+                                    self.bk_resource_eid_A.append('NA')
+                                    self.bk_resource_kernel_A.append('NA')
+                                    self.bk_resource_alias_A.append('NA')
 
-                            # look up port information
-                            eid_info = endp_data[endp_data_key]['name'].split('-')
-                            eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
+                                # look up port information
+                                eid_info = endp_data[endp_data_key]['name'].split('-')
+                                eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
 
-                            port_found = False
-                            self.bk_port_eid_A.append(eid_tmp_port)
-                            for port_data in self.port_data['interfaces']:
-                                port_data_key = list(port_data.keys())[0]
-                                if port_data_key == eid_tmp_port:
-                                    self.bk_port_mac_A.append(port_data[port_data_key]['mac'])
-                                    self.bk_port_ssid_A.append(port_data[port_data_key]['ssid'])
-                                    self.bk_port_mode_A.append(port_data[port_data_key]['mode'])
-                                    self.bk_port_traffic_type_A.append('BK')
-                                    self.bk_port_offered_rx_rate_A.append(self.cx_profile.side_b_min_bps)  # b side tx
-                                    self.bk_port_offered_tx_rate_A.append(self.cx_profile.side_a_min_bps)  # a side tx
-                                    self.bk_port_channel_A.append(port_data[port_data_key]["channel"])
-                                    port_found = True
-                                    break
+                                port_found = False
+                                self.bk_port_eid_A.append(eid_tmp_port)
+                                for port_data in self.port_data['interfaces']:
+                                    port_data_key = list(port_data.keys())[0]
+                                    if port_data_key == eid_tmp_port:
+                                        self.bk_port_mac_A.append(port_data[port_data_key]['mac'])
+                                        self.bk_port_ssid_A.append(port_data[port_data_key]['ssid'])
+                                        self.bk_port_mode_A.append(port_data[port_data_key]['mode'])
+                                        self.bk_port_traffic_type_A.append('BK')
+                                        self.bk_port_offered_rx_rate_A.append(self.cx_profile.side_b_min_bps)  # b side tx
+                                        self.bk_port_offered_tx_rate_A.append(self.cx_profile.side_a_min_bps)  # a side tx
+                                        self.bk_port_channel_A.append(port_data[port_data_key]["channel"])
+                                        port_found = True
+                                        break
 
-                            if port_found is False:
-                                self.bk_port_mac_A.append('NA')
-                                self.bk_port_ssid_A.append('NA')
-                                self.bk_port_mode_A.append('NA')
-                                self.bk_port_traffic_type_A.append("NA")
-                                self.bk_port_offered_rx_rate_A.append("NA")
-                                self.bk_port_offered_tx_rate_A.append("NA")
-                                self.bk_port_channel_A.append("NA")
+                                if port_found is False:
+                                    self.bk_port_mac_A.append('NA')
+                                    self.bk_port_ssid_A.append('NA')
+                                    self.bk_port_mode_A.append('NA')
+                                    self.bk_port_traffic_type_A.append("NA")
+                                    self.bk_port_offered_rx_rate_A.append("NA")
+                                    self.bk_port_offered_tx_rate_A.append("NA")
+                                    self.bk_port_channel_A.append("NA")
 
-                        # for unicast the upstream is B and downstream is A
-                        if endp_data[endp_data_key]['a/b'] == "B":
-                            self.bk_clients_B.append(endp_data[endp_data_key]['name'])
-                            self.bk_tos_dl_B.append(endp_data[endp_data_key]["tx rate"])
-                            self.bk_tos_ul_B.append(endp_data[endp_data_key]["rx rate"])
-                            self.bk_rx_drop_percent_B.append(endp_data[endp_data_key]["rx drop %"])
-                            self.bk_port_protocol_B.append('Uni-cast')
+                            # for unicast the upstream is B and downstream is A
+                            if endp_data[endp_data_key]['a/b'] == "B":
+                                self.bk_clients_B.append(endp_data[endp_data_key]['name'])
+                                self.bk_tos_dl_B.append(endp_data[endp_data_key]["tx rate"])
+                                self.bk_tos_ul_B.append(endp_data[endp_data_key]["rx rate"])
+                                self.bk_rx_drop_percent_B.append(endp_data[endp_data_key]["rx drop %"])
+                                self.bk_port_protocol_B.append('Uni-cast')
 
-                            # Report Table information
-                            # use the eid to get the hostname and channel
-                            eid_tmp_resource = str(self.name_to_eid(endp_data[endp_data_key]['eid'])[
-                                                   0]) + '.' + str(self.name_to_eid(endp_data[endp_data_key]['eid'])[1])
-                            # look up the resource
-                            resource_found = False
-                            for resource_data in self.resource_data['resources']:
-                                resource_data_key = list(resource_data.keys())[0]
-                                if resource_data_key == eid_tmp_resource:
-                                    resource_found = True
-                                    self.bk_resource_host_B.append(resource_data[resource_data_key]['hostname'])
-                                    self.bk_resource_hw_ver_B.append(resource_data[resource_data_key]['hw version'])
-                                    self.bk_resource_eid_B.append(resource_data[resource_data_key]['eid'])
-                                    self.bk_resource_kernel_B.append(resource_data[resource_data_key]['kernel'])
-                                    client_alias = self.create_resource_alias(
-                                        eid=resource_data[resource_data_key]['eid'],
-                                        host=resource_data[resource_data_key]['hostname'],
-                                        hw_version=resource_data[resource_data_key]['hw version'],
-                                        kernel=resource_data[resource_data_key]['kernel'])
-                                    self.bk_resource_alias_B.append(client_alias)
-                                    break
+                                # Report Table information
+                                # use the eid to get the hostname and channel
+                                eid_tmp_resource = str(self.name_to_eid(endp_data[endp_data_key]['eid'])[
+                                    0]) + '.' + str(self.name_to_eid(endp_data[endp_data_key]['eid'])[1])
+                                # look up the resource
+                                resource_found = False
+                                for resource_data in self.resource_data['resources']:
+                                    resource_data_key = list(resource_data.keys())[0]
+                                    if resource_data_key == eid_tmp_resource:
+                                        resource_found = True
+                                        self.bk_resource_host_B.append(resource_data[resource_data_key]['hostname'])
+                                        self.bk_resource_hw_ver_B.append(resource_data[resource_data_key]['hw version'])
+                                        self.bk_resource_eid_B.append(resource_data[resource_data_key]['eid'])
+                                        self.bk_resource_kernel_B.append(resource_data[resource_data_key]['kernel'])
+                                        client_alias = self.create_resource_alias(
+                                            eid=resource_data[resource_data_key]['eid'],
+                                            host=resource_data[resource_data_key]['hostname'],
+                                            hw_version=resource_data[resource_data_key]['hw version'],
+                                            kernel=resource_data[resource_data_key]['kernel'])
+                                        self.bk_resource_alias_B.append(client_alias)
+                                        break
 
-                            if resource_found is False:
-                                self.bk_resource_host_B.append('NA')
-                                self.bk_resource_hw_ver_B.append('NA')
-                                self.bk_resource_eid_B.append('NA')
-                                self.bk_resource_kernel_B.append('NA')
-                                self.bk_resource_alias_B.append('NA')
+                                if resource_found is False:
+                                    self.bk_resource_host_B.append('NA')
+                                    self.bk_resource_hw_ver_B.append('NA')
+                                    self.bk_resource_eid_B.append('NA')
+                                    self.bk_resource_kernel_B.append('NA')
+                                    self.bk_resource_alias_B.append('NA')
 
-                            # look up port information
-                            eid_info = endp_data[endp_data_key]['name'].split('-')
-                            eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
+                                # look up port information
+                                eid_info = endp_data[endp_data_key]['name'].split('-')
+                                eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
 
-                            port_found = False
-                            self.bk_port_eid_B.append(eid_tmp_port)
-                            for port_data in self.port_data['interfaces']:
-                                port_data_key = list(port_data.keys())[0]
-                                if port_data_key == eid_tmp_port:
-                                    self.bk_port_mac_B.append(port_data[port_data_key]['mac'])
-                                    self.bk_port_ssid_B.append(port_data[port_data_key]['ssid'])
-                                    self.bk_port_mode_B.append(port_data[port_data_key]['mode'])
-                                    self.bk_port_traffic_type_B.append('BK')
-                                    self.bk_port_offered_rx_rate_B.append(self.cx_profile.side_b_min_bps)  # b side tx
-                                    self.bk_port_offered_tx_rate_B.append(self.cx_profile.side_a_min_bps)  # a side tx
-                                    self.bk_port_channel_B.append(port_data[port_data_key]["channel"])
-                                    port_found = True
-                                    break
+                                port_found = False
+                                self.bk_port_eid_B.append(eid_tmp_port)
+                                for port_data in self.port_data['interfaces']:
+                                    port_data_key = list(port_data.keys())[0]
+                                    if port_data_key == eid_tmp_port:
+                                        self.bk_port_mac_B.append(port_data[port_data_key]['mac'])
+                                        self.bk_port_ssid_B.append(port_data[port_data_key]['ssid'])
+                                        self.bk_port_mode_B.append(port_data[port_data_key]['mode'])
+                                        self.bk_port_traffic_type_B.append('BK')
+                                        self.bk_port_offered_rx_rate_B.append(self.cx_profile.side_b_min_bps)  # b side tx
+                                        self.bk_port_offered_tx_rate_B.append(self.cx_profile.side_a_min_bps)  # a side tx
+                                        self.bk_port_channel_B.append(port_data[port_data_key]["channel"])
+                                        port_found = True
+                                        break
 
-                            if port_found is False:
-                                self.bk_port_mac_B.append('NA')
-                                self.bk_port_ssid_B.append('NA')
-                                self.bk_port_mode_B.append('NA')
-                                self.bk_port_traffic_type_B.append("NA")
-                                self.bk_port_offered_rx_rate_B.append("NA")
-                                self.bk_port_offered_tx_rate_B.append("NA")
-                                self.bk_port_channel_B.append("NA")
-
-                    # for unicast the upstream is B and downstream is A
-                    elif 'BE' in endp_data[endp_data_key]['name']:
-
-                        # for unicast the upstream is B and downstream is A
-                        if endp_data[endp_data_key]['a/b'] == "A":
-                            self.be_clients_A.append(endp_data[endp_data_key]['name'])
-                            self.be_tos_ul_A.append(endp_data[endp_data_key]["tx rate"])
-                            self.be_tos_dl_A.append(endp_data[endp_data_key]["rx rate"])
-                            self.be_rx_drop_percent_A.append(endp_data[endp_data_key]["rx drop %"])
-                            self.be_port_protocol_A.append('Uni-cast')
-
-                            # Report Table information
-                            # use the eid to get the hostname and channel
-                            eid_tmp_resource = str(self.name_to_eid(endp_data[endp_data_key]['eid'])[
-                                                   0]) + '.' + str(self.name_to_eid(endp_data[endp_data_key]['eid'])[1])
-                            # look up the resource
-                            resource_found = False
-                            for resource_data in self.resource_data['resources']:
-                                resource_data_key = list(resource_data.keys())[0]
-                                if resource_data_key == eid_tmp_resource:
-                                    resource_found = True
-                                    self.be_resource_host_A.append(resource_data[resource_data_key]['hostname'])
-                                    self.be_resource_hw_ver_A.append(resource_data[resource_data_key]['hw version'])
-                                    self.be_resource_eid_A.append(resource_data[resource_data_key]['eid'])
-                                    self.be_resource_kernel_A.append(resource_data[resource_data_key]['kernel'])
-                                    client_alias = self.create_resource_alias(
-                                        eid=resource_data[resource_data_key]['eid'],
-                                        host=resource_data[resource_data_key]['hostname'],
-                                        hw_version=resource_data[resource_data_key]['hw version'],
-                                        kernel=resource_data[resource_data_key]['kernel'])
-                                    self.be_resource_alias_A.append(client_alias)
-                                    break
-
-                            if resource_found is False:
-                                self.be_resource_host_A.append('NA')
-                                self.be_resource_hw_ver_A.append('NA')
-                                self.be_resource_eid_A.append('NA')
-                                self.be_resource_kernel_A.append('NA')
-                                self.be_resource_alias_A.append('NA')
-
-                            # look up port information
-                            eid_info = endp_data[endp_data_key]['name'].split('-')
-                            eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
-
-                            port_found = False
-                            self.be_port_eid_A.append(eid_tmp_port)
-                            for port_data in self.port_data['interfaces']:
-                                port_data_key = list(port_data.keys())[0]
-                                if port_data_key == eid_tmp_port:
-                                    self.be_port_mac_A.append(port_data[port_data_key]['mac'])
-                                    self.be_port_ssid_A.append(port_data[port_data_key]['ssid'])
-                                    self.be_port_mode_A.append(port_data[port_data_key]['mode'])
-                                    self.be_port_traffic_type_A.append('BE')
-                                    self.be_port_offered_rx_rate_A.append(self.cx_profile.side_b_min_bps)  # b side tx
-                                    self.be_port_offered_tx_rate_A.append(self.cx_profile.side_a_min_bps)  # a side tx
-                                    self.be_port_channel_A.append(port_data[port_data_key]["channel"])
-                                    port_found = True
-                                    break
-
-                            if port_found is False:
-                                self.be_port_mac_A.append('NA')
-                                self.be_port_ssid_A.append('NA')
-                                self.be_port_mode_A.append('NA')
-                                self.be_port_traffic_type_A.append("NA")
-                                self.be_port_offered_rx_rate_A.append("NA")
-                                self.be_port_offered_tx_rate_A.append("NA")
-                                self.be_port_channel_A.append("NA")
+                                if port_found is False:
+                                    self.bk_port_mac_B.append('NA')
+                                    self.bk_port_ssid_B.append('NA')
+                                    self.bk_port_mode_B.append('NA')
+                                    self.bk_port_traffic_type_B.append("NA")
+                                    self.bk_port_offered_rx_rate_B.append("NA")
+                                    self.bk_port_offered_tx_rate_B.append("NA")
+                                    self.bk_port_channel_B.append("NA")
 
                         # for unicast the upstream is B and downstream is A
-                        if endp_data[endp_data_key]['a/b'] == "B":
-                            self.be_clients_B.append(endp_data[endp_data_key]['name'])
-                            self.be_tos_dl_B.append(endp_data[endp_data_key]["tx rate"])
-                            self.be_tos_ul_B.append(endp_data[endp_data_key]["rx rate"])
-                            self.be_rx_drop_percent_B.append(endp_data[endp_data_key]["rx drop %"])
-                            self.be_port_protocol_B.append('Uni-cast')
+                        elif 'BE' in endp_data[endp_data_key]['name']:
 
-                            # Report Table information
-                            # use the eid to get the hostname and channel
-                            eid_tmp_resource = str(self.name_to_eid(endp_data[endp_data_key]['eid'])[
-                                                   0]) + '.' + str(self.name_to_eid(endp_data[endp_data_key]['eid'])[1])
-                            # look up the resource
-                            resource_found = False
-                            for resource_data in self.resource_data['resources']:
-                                resource_data_key = list(resource_data.keys())[0]
-                                if resource_data_key == eid_tmp_resource:
-                                    resource_found = True
-                                    self.be_resource_host_B.append(resource_data[resource_data_key]['hostname'])
-                                    self.be_resource_hw_ver_B.append(resource_data[resource_data_key]['hw version'])
-                                    self.be_resource_eid_B.append(resource_data[resource_data_key]['eid'])
-                                    self.be_resource_kernel_B.append(resource_data[resource_data_key]['kernel'])
-                                    client_alias = self.create_resource_alias(
-                                        eid=resource_data[resource_data_key]['eid'],
-                                        host=resource_data[resource_data_key]['hostname'],
-                                        hw_version=resource_data[resource_data_key]['hw version'],
-                                        kernel=resource_data[resource_data_key]['kernel'])
-                                    self.be_resource_alias_B.append(client_alias)
+                            # for unicast the upstream is B and downstream is A
+                            if endp_data[endp_data_key]['a/b'] == "A":
+                                self.be_clients_A.append(endp_data[endp_data_key]['name'])
+                                self.be_tos_ul_A.append(endp_data[endp_data_key]["tx rate"])
+                                self.be_tos_dl_A.append(endp_data[endp_data_key]["rx rate"])
+                                self.be_rx_drop_percent_A.append(endp_data[endp_data_key]["rx drop %"])
+                                self.be_port_protocol_A.append('Uni-cast')
 
-                                    break
+                                # Report Table information
+                                # use the eid to get the hostname and channel
+                                eid_tmp_resource = str(self.name_to_eid(endp_data[endp_data_key]['eid'])[
+                                    0]) + '.' + str(self.name_to_eid(endp_data[endp_data_key]['eid'])[1])
+                                # look up the resource
+                                resource_found = False
+                                for resource_data in self.resource_data['resources']:
+                                    resource_data_key = list(resource_data.keys())[0]
+                                    if resource_data_key == eid_tmp_resource:
+                                        resource_found = True
+                                        self.be_resource_host_A.append(resource_data[resource_data_key]['hostname'])
+                                        self.be_resource_hw_ver_A.append(resource_data[resource_data_key]['hw version'])
+                                        self.be_resource_eid_A.append(resource_data[resource_data_key]['eid'])
+                                        self.be_resource_kernel_A.append(resource_data[resource_data_key]['kernel'])
+                                        client_alias = self.create_resource_alias(
+                                            eid=resource_data[resource_data_key]['eid'],
+                                            host=resource_data[resource_data_key]['hostname'],
+                                            hw_version=resource_data[resource_data_key]['hw version'],
+                                            kernel=resource_data[resource_data_key]['kernel'])
+                                        self.be_resource_alias_A.append(client_alias)
+                                        break
 
-                            if resource_found is False:
-                                self.be_resource_host_B.append('NA')
-                                self.be_resource_hw_ver_B.append('NA')
-                                self.be_resource_eid_B.append('NA')
-                                self.be_resource_kernel_B.append('NA')
-                                self.be_resource_alias_B.append('NA')
+                                if resource_found is False:
+                                    self.be_resource_host_A.append('NA')
+                                    self.be_resource_hw_ver_A.append('NA')
+                                    self.be_resource_eid_A.append('NA')
+                                    self.be_resource_kernel_A.append('NA')
+                                    self.be_resource_alias_A.append('NA')
 
-                            # look up port information
-                            eid_info = endp_data[endp_data_key]['name'].split('-')
-                            eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
+                                # look up port information
+                                eid_info = endp_data[endp_data_key]['name'].split('-')
+                                eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
 
-                            port_found = False
-                            self.be_port_eid_B.append(eid_tmp_port)
-                            for port_data in self.port_data['interfaces']:
-                                port_data_key = list(port_data.keys())[0]
-                                if port_data_key == eid_tmp_port:
-                                    self.be_port_mac_B.append(port_data[port_data_key]['mac'])
-                                    self.be_port_ssid_B.append(port_data[port_data_key]['ssid'])
-                                    self.be_port_mode_B.append(port_data[port_data_key]['mode'])
-                                    self.be_port_traffic_type_B.append('BE')
-                                    self.be_port_offered_rx_rate_B.append(self.cx_profile.side_b_min_bps)  # b side tx
-                                    self.be_port_offered_tx_rate_B.append(self.cx_profile.side_a_min_bps)  # a side tx
-                                    self.be_port_channel_B.append(port_data[port_data_key]["channel"])
-                                    port_found = True
-                                    break
+                                port_found = False
+                                self.be_port_eid_A.append(eid_tmp_port)
+                                for port_data in self.port_data['interfaces']:
+                                    port_data_key = list(port_data.keys())[0]
+                                    if port_data_key == eid_tmp_port:
+                                        self.be_port_mac_A.append(port_data[port_data_key]['mac'])
+                                        self.be_port_ssid_A.append(port_data[port_data_key]['ssid'])
+                                        self.be_port_mode_A.append(port_data[port_data_key]['mode'])
+                                        self.be_port_traffic_type_A.append('BE')
+                                        self.be_port_offered_rx_rate_A.append(self.cx_profile.side_b_min_bps)  # b side tx
+                                        self.be_port_offered_tx_rate_A.append(self.cx_profile.side_a_min_bps)  # a side tx
+                                        self.be_port_channel_A.append(port_data[port_data_key]["channel"])
+                                        port_found = True
+                                        break
 
-                            if port_found is False:
-                                self.be_port_mac_B.append('NA')
-                                self.be_port_ssid_B.append('NA')
-                                self.be_port_mode_B.append('NA')
-                                self.be_port_traffic_type_B.append("NA")
-                                self.be_port_offered_rx_rate_B.append("NA")
-                                self.be_port_offered_tx_rate_B.append("NA")
-                                self.be_port_channel_B.append("NA")
+                                if port_found is False:
+                                    self.be_port_mac_A.append('NA')
+                                    self.be_port_ssid_A.append('NA')
+                                    self.be_port_mode_A.append('NA')
+                                    self.be_port_traffic_type_A.append("NA")
+                                    self.be_port_offered_rx_rate_A.append("NA")
+                                    self.be_port_offered_tx_rate_A.append("NA")
+                                    self.be_port_channel_A.append("NA")
 
-                    elif 'VI' in endp_data[endp_data_key]['name']:
-                        # for unicast the upstream is B and downstream is A
-                        if endp_data[endp_data_key]['a/b'] == "A":
-                            self.vi_clients_A.append(endp_data[endp_data_key]['name'])
-                            self.vi_tos_ul_A.append(endp_data[endp_data_key]["tx rate"])
-                            self.vi_tos_dl_A.append(endp_data[endp_data_key]["rx rate"])
-                            self.vi_rx_drop_percent_A.append(endp_data[endp_data_key]["rx drop %"])
-                            self.vi_port_protocol_A.append('Uni-cast')
+                            # for unicast the upstream is B and downstream is A
+                            if endp_data[endp_data_key]['a/b'] == "B":
+                                self.be_clients_B.append(endp_data[endp_data_key]['name'])
+                                self.be_tos_dl_B.append(endp_data[endp_data_key]["tx rate"])
+                                self.be_tos_ul_B.append(endp_data[endp_data_key]["rx rate"])
+                                self.be_rx_drop_percent_B.append(endp_data[endp_data_key]["rx drop %"])
+                                self.be_port_protocol_B.append('Uni-cast')
 
-                            # Report Table information
-                            # use the eid to get the hostname and channel
-                            eid_tmp_resource = str(self.name_to_eid(endp_data[endp_data_key]['eid'])[
-                                                   0]) + '.' + str(self.name_to_eid(endp_data[endp_data_key]['eid'])[1])
-                            # look up the resource
-                            resource_found = False
-                            for resource_data in self.resource_data['resources']:
-                                resource_data_key = list(resource_data.keys())[0]
-                                if resource_data_key == eid_tmp_resource:
-                                    resource_found = True
-                                    self.vi_resource_host_A.append(resource_data[resource_data_key]['hostname'])
-                                    self.vi_resource_hw_ver_A.append(resource_data[resource_data_key]['hw version'])
-                                    self.vi_resource_eid_A.append(resource_data[resource_data_key]['eid'])
-                                    self.vi_resource_kernel_A.append(resource_data[resource_data_key]['kernel'])
-                                    client_alias = self.create_resource_alias(
-                                        eid=resource_data[resource_data_key]['eid'],
-                                        host=resource_data[resource_data_key]['hostname'],
-                                        hw_version=resource_data[resource_data_key]['hw version'],
-                                        kernel=resource_data[resource_data_key]['kernel'])
-                                    self.vi_resource_alias_A.append(client_alias)
+                                # Report Table information
+                                # use the eid to get the hostname and channel
+                                eid_tmp_resource = str(self.name_to_eid(endp_data[endp_data_key]['eid'])[
+                                    0]) + '.' + str(self.name_to_eid(endp_data[endp_data_key]['eid'])[1])
+                                # look up the resource
+                                resource_found = False
+                                for resource_data in self.resource_data['resources']:
+                                    resource_data_key = list(resource_data.keys())[0]
+                                    if resource_data_key == eid_tmp_resource:
+                                        resource_found = True
+                                        self.be_resource_host_B.append(resource_data[resource_data_key]['hostname'])
+                                        self.be_resource_hw_ver_B.append(resource_data[resource_data_key]['hw version'])
+                                        self.be_resource_eid_B.append(resource_data[resource_data_key]['eid'])
+                                        self.be_resource_kernel_B.append(resource_data[resource_data_key]['kernel'])
+                                        client_alias = self.create_resource_alias(
+                                            eid=resource_data[resource_data_key]['eid'],
+                                            host=resource_data[resource_data_key]['hostname'],
+                                            hw_version=resource_data[resource_data_key]['hw version'],
+                                            kernel=resource_data[resource_data_key]['kernel'])
+                                        self.be_resource_alias_B.append(client_alias)
 
-                                    break
+                                        break
 
-                            if resource_found is False:
-                                self.vi_resource_host_A.append('NA')
-                                self.vi_resource_hw_ver_A.append('NA')
-                                self.vi_resource_eid_A.append('NA')
-                                self.vi_resource_kernel_A.append('NA')
-                                self.vi_resource_alias_A.append('NA')
+                                if resource_found is False:
+                                    self.be_resource_host_B.append('NA')
+                                    self.be_resource_hw_ver_B.append('NA')
+                                    self.be_resource_eid_B.append('NA')
+                                    self.be_resource_kernel_B.append('NA')
+                                    self.be_resource_alias_B.append('NA')
 
-                            # look up port information
-                            eid_info = endp_data[endp_data_key]['name'].split('-')
-                            eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
+                                # look up port information
+                                eid_info = endp_data[endp_data_key]['name'].split('-')
+                                eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
 
-                            port_found = False
-                            self.vi_port_eid_A.append(eid_tmp_port)
-                            for port_data in self.port_data['interfaces']:
-                                port_data_key = list(port_data.keys())[0]
-                                if port_data_key == eid_tmp_port:
-                                    self.vi_port_mac_A.append(port_data[port_data_key]['mac'])
-                                    self.vi_port_ssid_A.append(port_data[port_data_key]['ssid'])
-                                    self.vi_port_mode_A.append(port_data[port_data_key]['mode'])
-                                    self.vi_port_traffic_type_A.append('VI')
-                                    self.vi_port_offered_rx_rate_A.append(self.cx_profile.side_b_min_bps)  # b side tx
-                                    self.vi_port_offered_tx_rate_A.append(self.cx_profile.side_a_min_bps)  # a side tx
-                                    self.vi_port_channel_A.append(port_data[port_data_key]["channel"])
-                                    port_found = True
-                                    break
+                                port_found = False
+                                self.be_port_eid_B.append(eid_tmp_port)
+                                for port_data in self.port_data['interfaces']:
+                                    port_data_key = list(port_data.keys())[0]
+                                    if port_data_key == eid_tmp_port:
+                                        self.be_port_mac_B.append(port_data[port_data_key]['mac'])
+                                        self.be_port_ssid_B.append(port_data[port_data_key]['ssid'])
+                                        self.be_port_mode_B.append(port_data[port_data_key]['mode'])
+                                        self.be_port_traffic_type_B.append('BE')
+                                        self.be_port_offered_rx_rate_B.append(self.cx_profile.side_b_min_bps)  # b side tx
+                                        self.be_port_offered_tx_rate_B.append(self.cx_profile.side_a_min_bps)  # a side tx
+                                        self.be_port_channel_B.append(port_data[port_data_key]["channel"])
+                                        port_found = True
+                                        break
 
-                            if port_found is False:
-                                self.vi_port_mac_A.append('NA')
-                                self.vi_port_ssid_A.append('NA')
-                                self.vi_port_mode_A.append('NA')
-                                self.vi_port_traffic_type_A.append("NA")
-                                self.vi_port_offered_rx_rate_A.append("NA")
-                                self.vi_port_offered_tx_rate_A.append("NA")
-                                self.vi_port_channel_A.append("NA")
+                                if port_found is False:
+                                    self.be_port_mac_B.append('NA')
+                                    self.be_port_ssid_B.append('NA')
+                                    self.be_port_mode_B.append('NA')
+                                    self.be_port_traffic_type_B.append("NA")
+                                    self.be_port_offered_rx_rate_B.append("NA")
+                                    self.be_port_offered_tx_rate_B.append("NA")
+                                    self.be_port_channel_B.append("NA")
 
-                        # for unicast the upstream is B and downstream is A
-                        if endp_data[endp_data_key]['a/b'] == "B":
-                            self.vi_clients_B.append(endp_data[endp_data_key]['name'])
-                            self.vi_tos_dl_B.append(endp_data[endp_data_key]["tx rate"])
-                            self.vi_tos_ul_B.append(endp_data[endp_data_key]["rx rate"])
-                            self.vi_rx_drop_percent_B.append(endp_data[endp_data_key]["rx drop %"])
-                            self.vi_port_protocol_B.append('Uni-cast')
+                        elif 'VI' in endp_data[endp_data_key]['name']:
+                            # for unicast the upstream is B and downstream is A
+                            if endp_data[endp_data_key]['a/b'] == "A":
+                                self.vi_clients_A.append(endp_data[endp_data_key]['name'])
+                                self.vi_tos_ul_A.append(endp_data[endp_data_key]["tx rate"])
+                                self.vi_tos_dl_A.append(endp_data[endp_data_key]["rx rate"])
+                                self.vi_rx_drop_percent_A.append(endp_data[endp_data_key]["rx drop %"])
+                                self.vi_port_protocol_A.append('Uni-cast')
 
-                            # Report Table information
-                            # use the eid to get the hostname and channel
-                            eid_tmp_resource = str(self.name_to_eid(endp_data[endp_data_key]['eid'])[
-                                                   0]) + '.' + str(self.name_to_eid(endp_data[endp_data_key]['eid'])[1])
-                            # look up the resource
-                            resource_found = False
-                            for resource_data in self.resource_data['resources']:
-                                resource_data_key = list(resource_data.keys())[0]
-                                if resource_data_key == eid_tmp_resource:
-                                    resource_found = True
-                                    self.vi_resource_host_B.append(resource_data[resource_data_key]['hostname'])
-                                    self.vi_resource_hw_ver_B.append(resource_data[resource_data_key]['hw version'])
-                                    self.vi_resource_eid_B.append(resource_data[resource_data_key]['eid'])
-                                    self.vi_resource_kernel_B.append(resource_data[resource_data_key]['kernel'])
-                                    client_alias = self.create_resource_alias(
-                                        eid=resource_data[resource_data_key]['eid'],
-                                        host=resource_data[resource_data_key]['hostname'],
-                                        hw_version=resource_data[resource_data_key]['hw version'],
-                                        kernel=resource_data[resource_data_key]['kernel'])
-                                    self.vi_resource_alias_B.append(client_alias)
+                                # Report Table information
+                                # use the eid to get the hostname and channel
+                                eid_tmp_resource = str(self.name_to_eid(endp_data[endp_data_key]['eid'])[
+                                    0]) + '.' + str(self.name_to_eid(endp_data[endp_data_key]['eid'])[1])
+                                # look up the resource
+                                resource_found = False
+                                for resource_data in self.resource_data['resources']:
+                                    resource_data_key = list(resource_data.keys())[0]
+                                    if resource_data_key == eid_tmp_resource:
+                                        resource_found = True
+                                        self.vi_resource_host_A.append(resource_data[resource_data_key]['hostname'])
+                                        self.vi_resource_hw_ver_A.append(resource_data[resource_data_key]['hw version'])
+                                        self.vi_resource_eid_A.append(resource_data[resource_data_key]['eid'])
+                                        self.vi_resource_kernel_A.append(resource_data[resource_data_key]['kernel'])
+                                        client_alias = self.create_resource_alias(
+                                            eid=resource_data[resource_data_key]['eid'],
+                                            host=resource_data[resource_data_key]['hostname'],
+                                            hw_version=resource_data[resource_data_key]['hw version'],
+                                            kernel=resource_data[resource_data_key]['kernel'])
+                                        self.vi_resource_alias_A.append(client_alias)
 
-                                    break
+                                        break
 
-                            if resource_found is False:
-                                self.vi_resource_host_B.append('NA')
-                                self.vi_resource_hw_ver_B.append('NA')
-                                self.vi_resource_eid_B.append('NA')
-                                self.vi_resource_kernel_B.append('NA')
-                                self.vi_resource_alias_B.append('NA')
+                                if resource_found is False:
+                                    self.vi_resource_host_A.append('NA')
+                                    self.vi_resource_hw_ver_A.append('NA')
+                                    self.vi_resource_eid_A.append('NA')
+                                    self.vi_resource_kernel_A.append('NA')
+                                    self.vi_resource_alias_A.append('NA')
 
-                            # look up port information
-                            eid_info = endp_data[endp_data_key]['name'].split('-')
-                            eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
+                                # look up port information
+                                eid_info = endp_data[endp_data_key]['name'].split('-')
+                                eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
 
-                            port_found = False
-                            self.vi_port_eid_B.append(eid_tmp_port)
-                            for port_data in self.port_data['interfaces']:
-                                port_data_key = list(port_data.keys())[0]
-                                if port_data_key == eid_tmp_port:
-                                    self.vi_port_mac_B.append(port_data[port_data_key]['mac'])
-                                    self.vi_port_ssid_B.append(port_data[port_data_key]['ssid'])
-                                    self.vi_port_mode_B.append(port_data[port_data_key]['mode'])
-                                    self.vi_port_traffic_type_B.append('VI')
-                                    self.vi_port_offered_rx_rate_B.append(self.cx_profile.side_b_min_bps)  # b side tx
-                                    self.vi_port_offered_tx_rate_B.append(self.cx_profile.side_a_min_bps)  # a side tx
-                                    self.vi_port_channel_B.append(port_data[port_data_key]["channel"])
-                                    port_found = True
-                                    break
+                                port_found = False
+                                self.vi_port_eid_A.append(eid_tmp_port)
+                                for port_data in self.port_data['interfaces']:
+                                    port_data_key = list(port_data.keys())[0]
+                                    if port_data_key == eid_tmp_port:
+                                        self.vi_port_mac_A.append(port_data[port_data_key]['mac'])
+                                        self.vi_port_ssid_A.append(port_data[port_data_key]['ssid'])
+                                        self.vi_port_mode_A.append(port_data[port_data_key]['mode'])
+                                        self.vi_port_traffic_type_A.append('VI')
+                                        self.vi_port_offered_rx_rate_A.append(self.cx_profile.side_b_min_bps)  # b side tx
+                                        self.vi_port_offered_tx_rate_A.append(self.cx_profile.side_a_min_bps)  # a side tx
+                                        self.vi_port_channel_A.append(port_data[port_data_key]["channel"])
+                                        port_found = True
+                                        break
 
-                            if port_found is False:
-                                self.vi_port_mac_B.append('NA')
-                                self.vi_port_ssid_B.append('NA')
-                                self.vi_port_mode_B.append('NA')
-                                self.vi_port_traffic_type_B.append("NA")
-                                self.vi_port_offered_rx_rate_B.append("NA")
-                                self.vi_port_offered_tx_rate_B.append("NA")
-                                self.vi_port_channel_B.append("NA")
+                                if port_found is False:
+                                    self.vi_port_mac_A.append('NA')
+                                    self.vi_port_ssid_A.append('NA')
+                                    self.vi_port_mode_A.append('NA')
+                                    self.vi_port_traffic_type_A.append("NA")
+                                    self.vi_port_offered_rx_rate_A.append("NA")
+                                    self.vi_port_offered_tx_rate_A.append("NA")
+                                    self.vi_port_channel_A.append("NA")
 
-                    elif 'VO' in endp_data[endp_data_key]['name']:
-                        # for unicast the upstream is B and downstream is A
-                        if endp_data[endp_data_key]['a/b'] == "A":
-                            self.vo_clients_A.append(endp_data[endp_data_key]['name'])
-                            self.vo_tos_ul_A.append(endp_data[endp_data_key]["tx rate"])
-                            self.vo_tos_dl_A.append(endp_data[endp_data_key]["rx rate"])
-                            self.vo_rx_drop_percent_A.append(endp_data[endp_data_key]["rx drop %"])
-                            self.vo_port_protocol_A.append('Uni-cast')
+                            # for unicast the upstream is B and downstream is A
+                            if endp_data[endp_data_key]['a/b'] == "B":
+                                self.vi_clients_B.append(endp_data[endp_data_key]['name'])
+                                self.vi_tos_dl_B.append(endp_data[endp_data_key]["tx rate"])
+                                self.vi_tos_ul_B.append(endp_data[endp_data_key]["rx rate"])
+                                self.vi_rx_drop_percent_B.append(endp_data[endp_data_key]["rx drop %"])
+                                self.vi_port_protocol_B.append('Uni-cast')
 
-                            # Report Table information
-                            # use the eid to get the hostname and channel
-                            eid_tmp_resource = str(self.name_to_eid(endp_data[endp_data_key]['eid'])[
-                                                   0]) + '.' + str(self.name_to_eid(endp_data[endp_data_key]['eid'])[1])
-                            # look up the resource
-                            resource_found = False
-                            for resource_data in self.resource_data['resources']:
-                                resource_data_key = list(resource_data.keys())[0]
-                                if resource_data_key == eid_tmp_resource:
-                                    resource_found = True
-                                    self.vo_resource_host_A.append(resource_data[resource_data_key]['hostname'])
-                                    self.vo_resource_hw_ver_A.append(resource_data[resource_data_key]['hw version'])
-                                    self.vo_resource_eid_A.append(resource_data[resource_data_key]['eid'])
-                                    self.vo_resource_kernel_A.append(resource_data[resource_data_key]['kernel'])
-                                    client_alias = self.create_resource_alias(
-                                        eid=resource_data[resource_data_key]['eid'],
-                                        host=resource_data[resource_data_key]['hostname'],
-                                        hw_version=resource_data[resource_data_key]['hw version'],
-                                        kernel=resource_data[resource_data_key]['kernel'])
-                                    self.vo_resource_alias_A.append(client_alias)
-                                    break
+                                # Report Table information
+                                # use the eid to get the hostname and channel
+                                eid_tmp_resource = str(self.name_to_eid(endp_data[endp_data_key]['eid'])[
+                                    0]) + '.' + str(self.name_to_eid(endp_data[endp_data_key]['eid'])[1])
+                                # look up the resource
+                                resource_found = False
+                                for resource_data in self.resource_data['resources']:
+                                    resource_data_key = list(resource_data.keys())[0]
+                                    if resource_data_key == eid_tmp_resource:
+                                        resource_found = True
+                                        self.vi_resource_host_B.append(resource_data[resource_data_key]['hostname'])
+                                        self.vi_resource_hw_ver_B.append(resource_data[resource_data_key]['hw version'])
+                                        self.vi_resource_eid_B.append(resource_data[resource_data_key]['eid'])
+                                        self.vi_resource_kernel_B.append(resource_data[resource_data_key]['kernel'])
+                                        client_alias = self.create_resource_alias(
+                                            eid=resource_data[resource_data_key]['eid'],
+                                            host=resource_data[resource_data_key]['hostname'],
+                                            hw_version=resource_data[resource_data_key]['hw version'],
+                                            kernel=resource_data[resource_data_key]['kernel'])
+                                        self.vi_resource_alias_B.append(client_alias)
 
-                            if resource_found is False:
-                                self.vo_resource_host_A.append('NA')
-                                self.vo_resource_hw_ver_A.append('NA')
-                                self.vo_resource_eid_A.append('NA')
-                                self.vo_resource_kernel_A.append('NA')
-                                self.vo_resource_alias_A.append('NA')
+                                        break
 
-                            # look up port information
-                            eid_info = endp_data[endp_data_key]['name'].split('-')
-                            eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
+                                if resource_found is False:
+                                    self.vi_resource_host_B.append('NA')
+                                    self.vi_resource_hw_ver_B.append('NA')
+                                    self.vi_resource_eid_B.append('NA')
+                                    self.vi_resource_kernel_B.append('NA')
+                                    self.vi_resource_alias_B.append('NA')
 
-                            port_found = False
-                            self.vo_port_eid_A.append(eid_tmp_port)
-                            for port_data in self.port_data['interfaces']:
-                                port_data_key = list(port_data.keys())[0]
-                                if port_data_key == eid_tmp_port:
-                                    self.vo_port_mac_A.append(port_data[port_data_key]['mac'])
-                                    self.vo_port_ssid_A.append(port_data[port_data_key]['ssid'])
-                                    self.vo_port_mode_A.append(port_data[port_data_key]['mode'])
-                                    self.vo_port_traffic_type_A.append('VO')
-                                    self.vo_port_offered_rx_rate_A.append(self.cx_profile.side_b_min_bps)  # b side tx
-                                    self.vo_port_offered_tx_rate_A.append(self.cx_profile.side_a_min_bps)  # a side tx
-                                    self.vo_port_channel_A.append(port_data[port_data_key]["channel"])
-                                    port_found = True
-                                    break
+                                # look up port information
+                                eid_info = endp_data[endp_data_key]['name'].split('-')
+                                eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
 
-                            if port_found is False:
-                                self.vo_port_mac_A.append('NA')
-                                self.vo_port_ssid_A.append('NA')
-                                self.vo_port_mode_A.append('NA')
-                                self.vo_port_traffic_type_A.append("NA")
-                                self.vo_port_offered_rx_rate_A.append("NA")
-                                self.vo_port_offered_tx_rate_A.append("NA")
-                                self.vo_port_channel_A.append("NA")
+                                port_found = False
+                                self.vi_port_eid_B.append(eid_tmp_port)
+                                for port_data in self.port_data['interfaces']:
+                                    port_data_key = list(port_data.keys())[0]
+                                    if port_data_key == eid_tmp_port:
+                                        self.vi_port_mac_B.append(port_data[port_data_key]['mac'])
+                                        self.vi_port_ssid_B.append(port_data[port_data_key]['ssid'])
+                                        self.vi_port_mode_B.append(port_data[port_data_key]['mode'])
+                                        self.vi_port_traffic_type_B.append('VI')
+                                        self.vi_port_offered_rx_rate_B.append(self.cx_profile.side_b_min_bps)  # b side tx
+                                        self.vi_port_offered_tx_rate_B.append(self.cx_profile.side_a_min_bps)  # a side tx
+                                        self.vi_port_channel_B.append(port_data[port_data_key]["channel"])
+                                        port_found = True
+                                        break
 
-                        # for unicast the upstream is B and downstream is A
-                        if endp_data[endp_data_key]['a/b'] == "B":
-                            self.vo_clients_B.append(endp_data[endp_data_key]['name'])
-                            self.vo_tos_dl_B.append(endp_data[endp_data_key]["tx rate"])
-                            self.vo_tos_ul_B.append(endp_data[endp_data_key]["rx rate"])
-                            self.vo_rx_drop_percent_B.append(endp_data[endp_data_key]["rx drop %"])
-                            self.vo_port_protocol_B.append('Uni-cast')
+                                if port_found is False:
+                                    self.vi_port_mac_B.append('NA')
+                                    self.vi_port_ssid_B.append('NA')
+                                    self.vi_port_mode_B.append('NA')
+                                    self.vi_port_traffic_type_B.append("NA")
+                                    self.vi_port_offered_rx_rate_B.append("NA")
+                                    self.vi_port_offered_tx_rate_B.append("NA")
+                                    self.vi_port_channel_B.append("NA")
 
-                            # look up the resource
-                            resource_found = False
-                            for resource_data in self.resource_data['resources']:
-                                resource_data_key = list(resource_data.keys())[0]
-                                if resource_data_key == eid_tmp_resource:
-                                    resource_found = True
-                                    self.vo_resource_host_B.append(resource_data[resource_data_key]['hostname'])
-                                    self.vo_resource_hw_ver_B.append(resource_data[resource_data_key]['hw version'])
-                                    self.vo_resource_eid_B.append(resource_data[resource_data_key]['eid'])
-                                    self.vo_resource_kernel_B.append(resource_data[resource_data_key]['kernel'])
-                                    client_alias = self.create_resource_alias(
-                                        eid=resource_data[resource_data_key]['eid'],
-                                        host=resource_data[resource_data_key]['hostname'],
-                                        hw_version=resource_data[resource_data_key]['hw version'],
-                                        kernel=resource_data[resource_data_key]['kernel'])
-                                    self.vo_resource_alias_B.append(client_alias)
+                        elif 'VO' in endp_data[endp_data_key]['name']:
+                            # for unicast the upstream is B and downstream is A
+                            if endp_data[endp_data_key]['a/b'] == "A":
+                                self.vo_clients_A.append(endp_data[endp_data_key]['name'])
+                                self.vo_tos_ul_A.append(endp_data[endp_data_key]["tx rate"])
+                                self.vo_tos_dl_A.append(endp_data[endp_data_key]["rx rate"])
+                                self.vo_rx_drop_percent_A.append(endp_data[endp_data_key]["rx drop %"])
+                                self.vo_port_protocol_A.append('Uni-cast')
 
-                                    break
+                                # Report Table information
+                                # use the eid to get the hostname and channel
+                                eid_tmp_resource = str(self.name_to_eid(endp_data[endp_data_key]['eid'])[
+                                    0]) + '.' + str(self.name_to_eid(endp_data[endp_data_key]['eid'])[1])
+                                # look up the resource
+                                resource_found = False
+                                for resource_data in self.resource_data['resources']:
+                                    resource_data_key = list(resource_data.keys())[0]
+                                    if resource_data_key == eid_tmp_resource:
+                                        resource_found = True
+                                        self.vo_resource_host_A.append(resource_data[resource_data_key]['hostname'])
+                                        self.vo_resource_hw_ver_A.append(resource_data[resource_data_key]['hw version'])
+                                        self.vo_resource_eid_A.append(resource_data[resource_data_key]['eid'])
+                                        self.vo_resource_kernel_A.append(resource_data[resource_data_key]['kernel'])
+                                        client_alias = self.create_resource_alias(
+                                            eid=resource_data[resource_data_key]['eid'],
+                                            host=resource_data[resource_data_key]['hostname'],
+                                            hw_version=resource_data[resource_data_key]['hw version'],
+                                            kernel=resource_data[resource_data_key]['kernel'])
+                                        self.vo_resource_alias_A.append(client_alias)
+                                        break
 
-                            if resource_found is False:
-                                self.vo_resource_host_B.append('NA')
-                                self.vo_resource_hw_ver_B.append('NA')
-                                self.vo_resource_eid_B.append('NA')
-                                self.vo_resource_kernel_B.append('NA')
-                                self.vo_resource_alias_B.append('NA')
+                                if resource_found is False:
+                                    self.vo_resource_host_A.append('NA')
+                                    self.vo_resource_hw_ver_A.append('NA')
+                                    self.vo_resource_eid_A.append('NA')
+                                    self.vo_resource_kernel_A.append('NA')
+                                    self.vo_resource_alias_A.append('NA')
 
-                            # look up port information
-                            eid_info = endp_data[endp_data_key]['name'].split('-')
-                            eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
+                                # look up port information
+                                eid_info = endp_data[endp_data_key]['name'].split('-')
+                                eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
 
-                            port_found = False
-                            self.vo_port_eid_B.append(eid_tmp_port)
-                            for port_data in self.port_data['interfaces']:
-                                port_data_key = list(port_data.keys())[0]
-                                if port_data_key == eid_tmp_port:
-                                    self.vo_port_mac_B.append(port_data[port_data_key]['mac'])
-                                    self.vo_port_ssid_B.append(port_data[port_data_key]['ssid'])
-                                    self.vo_port_mode_B.append(port_data[port_data_key]['mode'])
-                                    self.vo_port_traffic_type_B.append('VO')
-                                    self.vo_port_offered_rx_rate_B.append(self.cx_profile.side_b_min_bps)  # b side tx
-                                    self.vo_port_offered_tx_rate_B.append(self.cx_profile.side_a_min_bps)  # a side tx
-                                    self.vo_port_channel_B.append(port_data[port_data_key]["channel"])
-                                    port_found = True
-                                    break
+                                port_found = False
+                                self.vo_port_eid_A.append(eid_tmp_port)
+                                for port_data in self.port_data['interfaces']:
+                                    port_data_key = list(port_data.keys())[0]
+                                    if port_data_key == eid_tmp_port:
+                                        self.vo_port_mac_A.append(port_data[port_data_key]['mac'])
+                                        self.vo_port_ssid_A.append(port_data[port_data_key]['ssid'])
+                                        self.vo_port_mode_A.append(port_data[port_data_key]['mode'])
+                                        self.vo_port_traffic_type_A.append('VO')
+                                        self.vo_port_offered_rx_rate_A.append(self.cx_profile.side_b_min_bps)  # b side tx
+                                        self.vo_port_offered_tx_rate_A.append(self.cx_profile.side_a_min_bps)  # a side tx
+                                        self.vo_port_channel_A.append(port_data[port_data_key]["channel"])
+                                        port_found = True
+                                        break
 
-                            if port_found is False:
-                                self.vo_port_mac_B.append('NA')
-                                self.vo_port_ssid_B.append('NA')
-                                self.vo_port_mode_B.append('NA')
-                                self.vo_port_traffic_type_B.append("NA")
-                                self.vo_port_offered_rx_rate_B.append("NA")
-                                self.vo_port_offered_tx_rate_B.append("NA")
-                                self.vo_port_channel_B.append("NA")
+                                if port_found is False:
+                                    self.vo_port_mac_A.append('NA')
+                                    self.vo_port_ssid_A.append('NA')
+                                    self.vo_port_mode_A.append('NA')
+                                    self.vo_port_traffic_type_A.append("NA")
+                                    self.vo_port_offered_rx_rate_A.append("NA")
+                                    self.vo_port_offered_tx_rate_A.append("NA")
+                                    self.vo_port_channel_A.append("NA")
+
+                            # for unicast the upstream is B and downstream is A
+                            if endp_data[endp_data_key]['a/b'] == "B":
+                                self.vo_clients_B.append(endp_data[endp_data_key]['name'])
+                                self.vo_tos_dl_B.append(endp_data[endp_data_key]["tx rate"])
+                                self.vo_tos_ul_B.append(endp_data[endp_data_key]["rx rate"])
+                                self.vo_rx_drop_percent_B.append(endp_data[endp_data_key]["rx drop %"])
+                                self.vo_port_protocol_B.append('Uni-cast')
+
+                                # look up the resource
+                                resource_found = False
+                                for resource_data in self.resource_data['resources']:
+                                    resource_data_key = list(resource_data.keys())[0]
+                                    if resource_data_key == eid_tmp_resource:
+                                        resource_found = True
+                                        self.vo_resource_host_B.append(resource_data[resource_data_key]['hostname'])
+                                        self.vo_resource_hw_ver_B.append(resource_data[resource_data_key]['hw version'])
+                                        self.vo_resource_eid_B.append(resource_data[resource_data_key]['eid'])
+                                        self.vo_resource_kernel_B.append(resource_data[resource_data_key]['kernel'])
+                                        client_alias = self.create_resource_alias(
+                                            eid=resource_data[resource_data_key]['eid'],
+                                            host=resource_data[resource_data_key]['hostname'],
+                                            hw_version=resource_data[resource_data_key]['hw version'],
+                                            kernel=resource_data[resource_data_key]['kernel'])
+                                        self.vo_resource_alias_B.append(client_alias)
+
+                                        break
+
+                                if resource_found is False:
+                                    self.vo_resource_host_B.append('NA')
+                                    self.vo_resource_hw_ver_B.append('NA')
+                                    self.vo_resource_eid_B.append('NA')
+                                    self.vo_resource_kernel_B.append('NA')
+                                    self.vo_resource_alias_B.append('NA')
+
+                                # look up port information
+                                eid_info = endp_data[endp_data_key]['name'].split('-')
+                                eid_tmp_port = eid_tmp_resource + '.' + eid_info[1]
+
+                                port_found = False
+                                self.vo_port_eid_B.append(eid_tmp_port)
+                                for port_data in self.port_data['interfaces']:
+                                    port_data_key = list(port_data.keys())[0]
+                                    if port_data_key == eid_tmp_port:
+                                        self.vo_port_mac_B.append(port_data[port_data_key]['mac'])
+                                        self.vo_port_ssid_B.append(port_data[port_data_key]['ssid'])
+                                        self.vo_port_mode_B.append(port_data[port_data_key]['mode'])
+                                        self.vo_port_traffic_type_B.append('VO')
+                                        self.vo_port_offered_rx_rate_B.append(self.cx_profile.side_b_min_bps)  # b side tx
+                                        self.vo_port_offered_tx_rate_B.append(self.cx_profile.side_a_min_bps)  # a side tx
+                                        self.vo_port_channel_B.append(port_data[port_data_key]["channel"])
+                                        port_found = True
+                                        break
+
+                                if port_found is False:
+                                    self.vo_port_mac_B.append('NA')
+                                    self.vo_port_ssid_B.append('NA')
+                                    self.vo_port_mode_B.append('NA')
+                                    self.vo_port_traffic_type_B.append("NA")
+                                    self.vo_port_offered_rx_rate_B.append("NA")
+                                    self.vo_port_offered_tx_rate_B.append("NA")
+                                    self.vo_port_channel_B.append("NA")
 
         self.client_dict_A = {
             "y_axis_name": "Client names",
@@ -7525,4 +7539,3 @@ and generate a report.
 
 if __name__ == "__main__":
     main()
-
