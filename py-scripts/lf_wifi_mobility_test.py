@@ -6,7 +6,7 @@ PURPOSE: The Candela Roam test uses the forced roam method to create and roam hu
 or more APs with the same SSID on the same channel or different channels. The user can run thousands of roams over
 long durations and the test measures roaming delay for each roam, station connection times, network down time,
 packet loss etc.. The user can run this test using different security methods and compare the roaming performance.
-The expected behavior is the roaming delay should be 50msecs or less for all various kinds of fast roaming methods to
+The expected behavior is the roaming delay should be 50ms or less for all various kinds of fast roaming methods to
 avoid any form of service interruption to real-time delay sensitive applications
 
 EXAMPLE:
@@ -76,7 +76,7 @@ ap_editor5: sleep 2.0
 ap_editor6: roam 1 sta1 90:3c:b3:9d:69:2e
 ap_editor7: sleep 10.0
 bss_query_reason: 16
-url: http://candelatech.com
+url: https://candelatech.com
 beacon_req_ie: 51000000000002ffffffffffff
 sta_addrs_ap: 04:f0:21:c3:b4:cc 1.1.12 sta0000
 sta_ports_sta: 1.1.sta0000
@@ -91,6 +91,11 @@ gen_ds: 0
 gen_aps0: # Queried via RRM
 gen_aps1: 90:3c:b3:9d:69:2e
 gen_aps2: 34:EF:B6:AF:49:07
+run_traffic: 0
+upstream_port: 1.1.upstream0
+traffic_type: UDP
+dl_rate: 10000000
+ul_rate: 0
 
 """
 import random
@@ -98,7 +103,6 @@ import sys
 import os
 import importlib
 import argparse
-import json
 import time
 import logging
 
@@ -156,7 +160,12 @@ class WifiMobility(cv_test):
                  test_rig="Testbed-01",
                  test_tag="",
                  local_lf_report_dir="",
-                 verbosity="5"
+                 verbosity="5",
+                 run_traffic=False,
+                 upstream_port="",
+                 traffic_type="UDP",
+                 dl_rate="10000000",
+                 ul_rate="0",
                  ):
         super().__init__(lfclient_host=lfclient_host, lfclient_port=lf_port)
 
@@ -207,6 +216,11 @@ class WifiMobility(cv_test):
         self.test_tag = test_tag
         self.local_lf_report_dir = local_lf_report_dir
         self.verbosity = verbosity
+        self.run_traffic = run_traffic
+        self.upstream_port = upstream_port
+        self.traffic_type = traffic_type
+        self.dl_rate = dl_rate
+        self.ul_rate = ul_rate
 
     def create_scenario(self, scenario_name="Automation", raw_line=""):
         self.pass_raw_lines_to_cv(scenario_name=scenario_name, Rawline=raw_line)  # creates a dummy scenario
@@ -284,6 +298,14 @@ class WifiMobility(cv_test):
         if self.test_tag != "":
             self.cfg_options.append("test_tag: " + self.test_tag)
 
+        if self.run_traffic:
+            self.cfg_options.append("run_traffic: " + str(1))
+            self.cfg_options.append("traffic_type: " + str(self.traffic_type))
+            self.cfg_options.append("dl_rate: " + str(self.dl_rate))
+            self.cfg_options.append("ul_rate: " + str(self.ul_rate))
+            self.cfg_options.append("upstream_port: " + str(self.upstream_port))
+
+
         # self.apply_cfg_options(self.cfg_options, self.enables, self.disables, self.raw_lines, self.raw_lines_file)
 
         # blob_test = "WiFi-Mobility-"
@@ -339,7 +361,7 @@ PURPOSE: The Candela Roam test uses the forced roam method to create and roam hu
 or more APs with the same SSID on the same channel or different channels. The user can run thousands of roams over 
 long durations and the test measures roaming delay for each roam, station connection times, network down time, 
 packet loss etc.. The user can run this test using different security methods and compare the roaming performance. 
-The expected behavior is the roaming delay should be 50msecs or less for all various kinds of fast roaming methods to 
+The expected behavior is the roaming delay should be 50ms or less for all various kinds of fast roaming methods to 
 avoid any form of service interruption to real-time delay sensitive applications
 
 EXAMPLE:
@@ -437,6 +459,11 @@ INCLUDE_IN_README: False
                           help="Specify the test rig info for reporting purposes, for instance:  testbed-01")
     optional.add_argument('--log_level', default='info',
                           help='Set logging level: debug | info | warning | error | critical')
+    optional.add_argument("--run_traffic", help="Specify the traffic mode to run traffic on", action="store_true")
+    optional.add_argument("--upstream_port", default="", help="Specify the upstream port to run traffic on")
+    optional.add_argument("--traffic_type", default="UDP", help="Specify the traffic type to run traffic on")
+    optional.add_argument("--dl_rate", default=10000000, help="Specify the download rate for traffic")
+    optional.add_argument("--ul_rate", default=0, help="Specify the upload rate for traffic")
 
     args = parser.parse_args()
     print(args)
@@ -451,10 +478,14 @@ INCLUDE_IN_README: False
     if args.log_level:
         logger_config.set_level(level=args.log_level)
 
-    # lf_logger_config_json will take presidence to changing debug levels
+    # lf_logger_config_json will take presidency to changing debug levels
     if args.lf_logger_config_json:
         logger_config.lf_logger_config_json = args.lf_logger_config_json
         logger_config.load_lf_logger_config()
+
+    if args.run_traffic and not args.upstream_port:
+        logger.error("'--upstream_port' is required when '--run_traffic' is enabled")
+        exit(1)
 
     wifi_mobility_obj = WifiMobility(lfclient_host=args.mgr,
                                      lf_port=args.port,
@@ -484,7 +515,12 @@ INCLUDE_IN_README: False
                                      graph_groups=args.graph_groups,
                                      test_rig=args.test_rig,
                                      local_lf_report_dir=args.local_report_dir,
-                                     verbosity=args.verbosity
+                                     verbosity=args.verbosity,
+                                     run_traffic=args.run_traffic,
+                                     upstream_port=args.upstream_port,
+                                     traffic_type=args.traffic_type,
+                                     dl_rate=args.dl_rate,
+                                     ul_rate=args.ul_rate,
                                      )
     if wifi_mobility_obj.instance_name.endswith('-0'):
         wifi_mobility_obj.instance_name = wifi_mobility_obj.instance_name + str(random.randint(1, 9999))
