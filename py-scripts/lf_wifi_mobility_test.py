@@ -403,7 +403,7 @@ INCLUDE_IN_README: False
                           help="LANforge username to pull reports")
     required.add_argument("--lf_password", type=str, default="lanforge",
                           help="LANforge Password to pull reports")
-    required.add_argument("-s", "--stations", type=str, default="1.1.sta0000",
+    required.add_argument("-s", "--stations", type=str, default="",
                           help="If specified, these stations will be used.  If not specified, all available stations "
                                "will be selected.  Example: 1.1.sta001,1.1.wlan0,...")
     required.add_argument("--bssid_list", type=str, help="pass the list of bssid's of AP1,AP2,etc.,",
